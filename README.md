@@ -1,45 +1,53 @@
-## 💡 What is Kautilya?
 
-Kautilya is an AI-powered coding platform (Web + IDE) that helps developers:
-- Think before coding (strategy mode)
-- Generate smarter code using AI
-- Build projects with guided steps
+---
 
-Unlike normal AI tools, Kautilya focuses on **structured thinking + execution**.
+## 🤝 Looking for Contributors
 
-It combines:
+We are building something ambitious and are looking for serious contributors.
 
-AI coding assistance (like Claude)
-Structured thinking inspired by Chanakya
-Built-in development environment
-Vision
-Help developers think, plan, and build better — not just generate code.
+### Open Roles:
+- 🎨 Frontend (React / UI/UX)
+- ⚙️ Backend (Node / APIs)
+- 🧠 AI Integration (optional)
 
-Current Status
-UI: In Progress
-Core Idea: Defined
-Progress: ~30%
-Planned Features
-AI Coding Assistant
-Built-in Web IDE
-Strategic Thinking Mode (plan before coding)
-Project Guidance System
-Looking for Contributors
-We are looking for:
+---
 
-Frontend (React / UI)
-Backend (Node / APIs)
-AI integration
-Requirements
-Must have built at least 1 project
-Serious contributors only
-Willing to collaborate long-term
-How to Join
-Open an issue or DM with:
+## 📌 Requirements
 
-Your GitHub
-Your role (frontend/backend/AI)
-Let’s build something powerful.
-## 🚀 Looking for contributors
+- Must have built at least 1 project  
+- Should understand basics of development  
+- Serious and consistent (no ghosting)  
 
-This is an early-stage project. If you're a serious developer, feel free to join.
+---
+
+## 🚀 How to Join
+
+1. Check the issues tab  
+2. Pick a task or suggest one  
+3. Open a PR or DM  
+
+Or reach out with:
+- Your GitHub  
+- Your role (frontend/backend/AI)  
+
+---
+
+## ⚡ Why join?
+
+- Work on a **real product-level idea**
+- Learn AI + full-stack development
+- Build something unique (not a clone project)
+- Early contributor advantage 🚀
+
+---
+
+## 🧠 Philosophy
+
+Inspired by Chanakya:
+> Strategy first, execution next.
+
+---
+
+## ⭐ Support
+
+If you like the idea, consider starring the repo.
