@@ -1,5 +1,11 @@
-Kautilya AI
-Kautilya is a next-gen AI coding platform (Web + IDE) designed to go beyond "vibe coding".
+## 💡 What is Kautilya?
+
+Kautilya is an AI-powered coding platform (Web + IDE) that helps developers:
+- Think before coding (strategy mode)
+- Generate smarter code using AI
+- Build projects with guided steps
+
+Unlike normal AI tools, Kautilya focuses on **structured thinking + execution**.
 
 It combines:
 
@@ -34,3 +40,6 @@ Open an issue or DM with:
 Your GitHub
 Your role (frontend/backend/AI)
 Let’s build something powerful.
+## 🚀 Looking for contributors
+
+This is an early-stage project. If you're a serious developer, feel free to join.
