@@ -1,0 +1,42 @@
+{
+  "sessions": [
+    {
+      "id": 1773083389171,
+      "question": "Write a function that safely parses user-provided JSON and returns typed data — handle every possible failure",
+      "language": "typescript",
+      "pattern": "error handling, typed parsing",
+      "codeSnippet": "To create a robust and production-ready function that safely parses user-provided JSON strings and returns typed data, we need to handle all possible failure scenarios while ensuring type safety and p",
+      "score": 8,
+      "timestamp": "2026-03-09T19:09:49.171Z"
+    },
+    {
+      "id": 1773131940836,
+      "question": "make me an login page(just ui and layout) with best animation and cards",
+      "language": "typescript",
+      "pattern": "ui",
+      "codeSnippet": "To create a visually appealing login page with a card-based layout and enhanced animations, we will use React and TypeScript. The design will focus on a clean and modern look, incorporating subtle ani",
+      "score": 7,
+      "timestamp": "2026-03-10T08:39:00.836Z"
+    },
+    {
+      "id": 1773224837468,
+      "question": "Build a complete authentication flow: signup, login, JWT + refresh tokens, password reset via email, rate limiting on auth routes — TypeScript + Express. Production ready(use tier 5 for this)",
+      "language": "typescript",
+      "pattern": "security, scalability, best practices",
+      "codeSnippet": "This code implements a complete authentication flow using Express, TypeScript, and Prisma. It includes signup, login, JWT-based authentication with refresh tokens, password reset via email. It also incorporates rate limiting for authentication routes and secure password handling using bcrypt. The system utilizes Redis for rate limiting and JWT storage, and integrates logging with Winston.\n\n```type",
+      "score": 8,
+      "timestamp": "2026-03-11T10:27:17.468Z"
+    },
+    {
+      "id": 1773226566717,
+      "question": "create a login page with lauout and ui(tier 5), best design",
+      "language": "react",
+      "pattern": "canvas",
+      "codeSnippet": "function App() {\n  const [email, setEmail] = useState('');\n  const [password, setPassword] = useState('');\n  const [emailError, setEmailError] = useState(null);\n  const [passwordError, setPasswordError] = useState(null);\n  const [isLoading, setIsLoading] = useState(false);\n  const [loginSuccess, setLoginSuccess] = useState(false);\n  const [loginFailed, setLoginFailed] = useState(false);\n  const [s",
+      "score": 8,
+      "timestamp": "2026-03-11T10:56:06.717Z"
+    }
+  ],
+  "totalQuestions": 4,
+  "lastUpdated": "2026-03-11T10:56:06.717Z"
+}

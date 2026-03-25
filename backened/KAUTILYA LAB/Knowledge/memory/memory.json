@@ -1,0 +1,69 @@
+{
+  "sessions": [
+    {
+      "id": 1773063377163,
+      "question": "How does the internet actually work from when I press Enter to when a page loads?",
+      "coreInsight": "When you press Enter to load a webpage, an intriguing journey begins that involves several steps and technologies working together seamlessly. Let’s explore this process using a fun analogy of orderin...",
+      "score": 9,
+      "timestamp": "2026-03-09T13:36:17.163Z"
+    },
+    {
+      "id": 1773063769909,
+      "question": "If I have no money and no connections at 15, what's the fastest realistic path to building a startup?",
+      "coreInsight": "If you're 15 and eager to launch a startup without much money or connections, starting a service-based business is your most practical path. Here’s a step-by-step guide to help you get started:  Choos...",
+      "score": 10,
+      "timestamp": "2026-03-09T13:42:49.909Z"
+    },
+    {
+      "id": 1773065017003,
+      "question": "Explain quantum computing simply",
+      "coreInsight": "Quantum computing transforms information processing by harnessing the peculiar principles of quantum mechanics. Here’s a straightforward breakdown to grasp its essence:  **Bits vs. Qubits**: In classical computing, information is processed using bits, which function like a switch in either the 'on' ...",
+      "score": 9,
+      "timestamp": "2026-03-09T14:03:37.003Z"
+    },
+    {
+      "id": 1773066101571,
+      "question": "What is the one thing that separates people who build great products from people who just build things?",
+      "coreInsight": "The primary differentiator between those who build great products and those who simply create things lies in deep user empathy.   Great product builders invest time in understanding their users' needs, pain points, and desires. This involves active listening, engaging with users to gather feedback, ...",
+      "score": 7,
+      "timestamp": "2026-03-09T14:21:41.571Z"
+    },
+    {
+      "id": 1773066390574,
+      "question": "What is the one thing every successful person figured out that school never teaches?",
+      "coreInsight": "Every successful person figures out that **self-directed learning** is paramount. While traditional education tends to prioritize standardized tests and rote memorization, it often neglects to foster a genuine love for learning. Successful individuals take it upon themselves to explore their passion...",
+      "score": 7,
+      "timestamp": "2026-03-09T14:26:30.574Z"
+    },
+    {
+      "id": 1773066629284,
+      "question": "What is the difference between being busy and making progress?",
+      "coreInsight": "Being busy and making progress are often mistaken for each other, but they are fundamentally different in focus and outcome.  ### Core Differences  1. **Activity vs. Purpose**      - **Busy:** Involves high levels of activity without a clear purpose. It’s reacting to immediate demands, like a hamste...",
+      "score": 7,
+      "timestamp": "2026-03-09T14:30:29.284Z"
+    },
+    {
+      "id": 1773067774603,
+      "question": "Why do most people never build the thing they say they want to build?",
+      "coreInsight": "Most people fail to realize their envisioned projects due to intersecting psychological barriers and strategic missteps. Here are the key reasons:  1. Unclear Purpose: Many lack a well-defined reason for their project, which erodes motivation when challenges arise. Without a compelling \"why,\" the en...",
+      "score": 8,
+      "timestamp": "2026-03-09T14:49:34.603Z"
+    },
+    {
+      "id": 1773081241606,
+      "question": "Why do most people never build the thing they say they want to build?",
+      "coreInsight": "Individuals often fail to realize their projects because they confuse the excitement of expressing a desire with actual progress. This emotional high can create an illusion of advancement, leading many to believe that merely vocalizing their goals brings them closer to achieving them. This mispercep...",
+      "score": 8,
+      "timestamp": "2026-03-09T18:34:01.606Z"
+    },
+    {
+      "id": 1773081786064,
+      "question": "Why do most people never build the thing they say they want to build?",
+      "coreInsight": "Most people never build what they aspire to because they are paralyzed by the enormity of their ambitions, fixated on the grand vision rather than identifying actionable first steps. This paralysis stems from a mix of fear, discomfort, and the absence of a clear action plan. It's not simply a strugg...",
+      "score": 8,
+      "timestamp": "2026-03-09T18:43:06.064Z"
+    }
+  ],
+  "totalQuestions": 9,
+  "lastUpdated": "2026-03-09T18:43:06.064Z"
+}
