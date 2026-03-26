@@ -1,16 +1,58 @@
 # Kautilya Code
 
-We’re building Kautilya Code, a premium AI builder workspace where prompt, source, preview, runtime, and review all stay in one flow.
+The Sovereign Vibe-Coding OS
 
-Right now, we’re looking for teammates who want to help shape the product, the experience, and the backend engine behind it.
+Strategic Software Architecture. Autonomous Execution. Absolute Cinema.
 
-## What We’re Building
+Kautilya Code is a full-stack, multi-model developer ecosystem designed to turn a solo creator into a software empire. Inspired by the strategic brilliance of Chanakya's Arthashastra, the system moves beyond simple code generation into autonomous orchestration, self-healing production, and philosophical logic.
 
-Kautilya is not just another AI wrapper. It is a disciplined workspace for building, checking, and shipping ideas with clarity.
+## Vision
 
-## Open Teammate Roles
+Kautilya Code is built for builders who want more than autocomplete and more than a chatbot wrapper. It is designed to feel like a command center for modern software creation: clear, disciplined, multi-layered, and capable of turning intent into execution.
 
-| Role | What You’d Help With |
+## The Three Pillars Of The Empire
+
+### I. The Arsenal
+
+- 812 - high-speed, lightweight execution for boilerplate and small fixes
+- 812 Hybrid - orchestrated multi-AI collaboration with the King monitor and the Destroyer audit layer
+- 812+ - heavy-lift mode powered by premium reasoning and strategic context
+- 812+ Hybrid - the full sovereignty tier, with parallel upgraded models for complex system work
+
+### II. The Citadel
+
+- Kautilya Docs - a dedicated planning engine for voice-to-text dumps and structured strategy
+- API Wallet - bring your own keys with flexibility and security
+- The Court - a shared space for prompts, templates, and collaborative building
+
+### III. The Engine Of Reality
+
+- The Canvas - real-time execution where the AI codes, previews, and corrects itself in a closed loop
+- Production triggers - event-driven logic that supports durable, set-and-forget systems
+- Knowledge synthesis - project history, skills, and knowledge bases that grow with your workflow
+
+## Command And Control
+
+Kautilya Code uses a persistent command system to keep the AI inside the user's intent and reduce context drift.
+
+- Standard - `/plan`, `/build`, `/debug`
+- Elite - `/think`, `/heavylift`, `/solo`
+- Sentinel - `/audit`, `/secure`, `/destroy`
+- Freeze - locked mode that prevents edits outside the immediate scope of the prompt
+
+## Philosophical Foundation
+
+Unlike systems that only aim to be helpful, Kautilya Code is designed around resilience and victory.
+
+- Efficiency - use the smallest useful amount of code
+- Security - expect the Destroyer to find a flaw and build the fortress first
+- Strategy - every function should serve the long-term vision, not just the current bug fix
+
+## Looking For Teammates
+
+We are actively looking for people who want to help shape the project.
+
+| Role | What You'd Help With |
 | --- | --- |
 | Frontend | React UI, polished pages, design consistency, and builder experience |
 | Backend | Node APIs, orchestration, runtime, memory, and file workflows |
@@ -19,41 +61,18 @@ Kautilya is not just another AI wrapper. It is a disciplined workspace for build
 | Testing / QA | Catching edge cases, regressions, and product flow issues |
 | Docs / Community | Better onboarding, README polish, and contributor support |
 
-## What Makes This Worth Joining
+## Good Fit
 
-- Real product, not a throwaway demo
-- Frontend and backend already have strong structure
-- Builder lab, dashboard, auth, and routing are already in place
-- AI workflow includes slash commands, memory, and approval steps
-- There is room to help shape the voice, visuals, and system behavior
-
-## The Stack
-
-- Frontend: React, TypeScript, Vite, Tailwind, Framer Motion
-- Backend: Node.js, Express, model orchestration, memory, runtime, and file tools
-- Auth / data: Supabase
+- You build with care
+- You communicate clearly
+- You follow through on tasks
+- You like product thinking, not just code
 
 ## Project Map
 
 - [src](./src/README.md) - frontend app, routed surfaces, theme system, and shared UI building blocks
 - [backened](./backened/README.md) - backend entry point and orchestration hub
 - [KAUTILYA LAB](./backened/KAUTILYA%20LAB/README.md) - server, pipeline, memory, knowledge, and execution layers
-
-## How To Join
-
-1. Open an issue or message with the role you want to take
-2. Share a small sample of your work or a related project
-3. Pick one area you can improve first
-4. Keep communication clear and consistent
-
-## Good Fit
-
-We work best with people who:
-
-- Build with care
-- Communicate clearly
-- Follow through on tasks
-- Like product thinking, not just code
 
 ## Quick Start
 
@@ -62,12 +81,8 @@ We work best with people who:
 - `npm run dev:server` - start the backend server
 - `npm run dev:all` - run the full local stack together
 
-## Scripts
-
-- `npm run build` - compile the frontend for production
-- `npm run lint` - run lint checks
-- `npm run preview` - preview the built app locally
-
 ## Why This Repo Feels Different
 
-Kautilya keeps the request, the source, the runtime, and the review loop visible together. That makes it a strong place for teammates who care about building something polished, useful, and a little unforgettable.
+Kautilya keeps the request, the source, the runtime, and the review loop visible together. It is built for teammates who want to make something polished, useful, and hard to ignore.
+
+> The world is a battlefield; your code is your infantry. Lead them well.
