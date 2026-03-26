@@ -2,6 +2,15 @@
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { DiffEditor } from "@monaco-editor/react";
+import {
+  BookOpenText,
+  Calculator,
+  KeyRound,
+  Settings2,
+  TimerReset,
+  Users as UsersIcon,
+} from "lucide-react";
+import MacOSDock, { type DockApp } from "@/components/ui/mac-os-dock";
 import { useAppTheme } from "@/theme/AppThemeProvider";
 import AIPanel from "./Aipanel";
 import EditorSection from "./editor";
@@ -63,8 +72,8 @@ const IDatabase = () =>
 const IFlask = () => I("M10 2v4l-5 9a4 4 0 0 0 3.5 6h7a4 4 0 0 0 3.5-6l-5-9V2 M8 11h8");
 const IFiles = () => I("M4 4h6l2 2h8v14H4z");
 
-const STARTER_CODE = `// Kautilya Builder ï¿½ Active Session
-// Model: 812+ ï¿½ Section: Chanakya Intelligence ï¿½ Medium: Build
+const STARTER_CODE = `// Kautilya Builder • Active Session
+// Model: 812+ • Section: Chanakya Intelligence • Medium: Build
 
 import { useState, useEffect } from 'react';
 
@@ -331,7 +340,7 @@ function Terminal({
   onConsoleEntry: (entry: Omit<ConsoleLine, "id" | "timestamp">) => void;
 }) {
   const [lines, setLines] = useState<TermLine[]>([
-    { id: 0, type: "info", text: "Kautilya Terminal ï¿½ hybrid runtime console ready" },
+    { id: 0, type: "info", text: "Kautilya Terminal • hybrid runtime console ready" },
     { id: 1, type: "info", text: "Run commands in the project folder, stream logs, and stop active jobs." },
   ]);
   const [input, setInput] = useState("");
@@ -431,7 +440,7 @@ function Terminal({
     if (data.type === "done") {
       setActiveCommandId(null);
       setStatus(data.code === 0 ? "idle" : "error");
-      pushLine(data.code === 0 ? "status" : "error", `Exit ${data.code ?? 0} ï¿½ ${data.runtime ?? "runtime"}`);
+      pushLine(data.code === 0 ? "status" : "error", `Exit ${data.code ?? 0} • ${data.runtime ?? "runtime"}`);
       pushConsole(data.code === 0 ? "info" : "warn", `${data.runtime ?? "Runtime"} finished with exit ${data.code ?? 0}.`, "system");
     }
   };
@@ -831,11 +840,11 @@ function ExplorerInputRow({
         padding: "6px 8px",
         paddingLeft: 12 + depth * 12,
         borderRadius: 10,
-        border: "1px solid rgba(174,124,26,0.24)",
-        background: "rgba(174,124,26,0.08)",
+        border: "1px solid rgba(var(--accent-rgb), 0.24)",
+        background: "linear-gradient(135deg, rgba(var(--accent-rgb), 0.12), rgba(var(--accent-alt-rgb), 0.08))",
       }}
     >
-      <span style={{ color: draft.type === "folder" ? "#AE7C1A" : "#6B7280", display: "flex", flexShrink: 0 }}>
+      <span style={{ color: draft.type === "folder" ? "var(--accent-strong)" : "var(--builder-muted)", display: "flex", flexShrink: 0 }}>
         {draft.type === "folder" ? <IFolder /> : <IPlus />}
       </span>
       <input
@@ -856,10 +865,10 @@ function ExplorerInputRow({
         placeholder={draft.type === "folder" ? "folder-name" : "file-name.tsx"}
         style={{
           flex: 1,
-          background: "rgba(4,6,12,0.9)",
-          border: "1px solid rgba(255,255,255,0.08)",
+          background: "var(--builder-glass)",
+          border: "1px solid var(--builder-border)",
           borderRadius: 8,
-          color: "#E5E7EB",
+          color: "var(--text-primary)",
           padding: "6px 8px",
           fontSize: 11,
           outline: "none",
@@ -889,6 +898,7 @@ function FileTreeItem({
   onCommitDraft,
   onCancelDraft,
   onDragStart,
+  onDragEnd,
   onDragOverTarget,
   onDragLeaveTarget,
   onDropTarget,
@@ -911,6 +921,7 @@ function FileTreeItem({
   onCommitDraft: () => void;
   onCancelDraft: () => void;
   onDragStart: (node: FileNode) => void;
+  onDragEnd: () => void;
   onDragOverTarget: (node: FileNode) => void;
   onDragLeaveTarget: (node: FileNode) => void;
   onDropTarget: (node: FileNode) => void;
@@ -938,8 +949,9 @@ function FileTreeItem({
         />
       ) : (
         <div
-          draggable={!!dragState || true}
+          draggable
           onDragStart={() => onDragStart(node)}
+          onDragEnd={onDragEnd}
           onDragOver={(event) => {
             event.preventDefault();
             onDragOverTarget(node);
@@ -967,41 +979,41 @@ function FileTreeItem({
               : dragInvalid
                 ? "rgba(248,113,113,0.14)"
                 : isSelected
-                  ? "rgba(174,124,26,0.12)"
+                  ? "var(--accent-soft)"
                   : isActive
-                    ? "rgba(155,34,38,0.1)"
+                    ? "rgba(var(--accent-rgb), 0.1)"
                     : "transparent",
             borderLeft: isSelected
-              ? "1px solid rgba(174,124,26,0.45)"
+              ? "1px solid var(--accent-strong)"
               : isActive
-                ? "1px solid rgba(155,34,38,0.4)"
+                ? "1px solid rgba(var(--accent-rgb), 0.42)"
                 : "1px solid transparent",
             borderTop: dragValid ? "1px solid rgba(134,239,172,0.25)" : "1px solid transparent",
             borderBottom: dragValid ? "1px solid rgba(134,239,172,0.25)" : "1px solid transparent",
             transition: "background 0.12s, border-color 0.12s",
           }}
           onMouseEnter={(event) => {
-            if (!isSelected && !isActive && !dragActive) event.currentTarget.style.background = "rgba(155,34,38,0.04)";
+            if (!isSelected && !isActive && !dragActive) event.currentTarget.style.background = "var(--highlight)";
           }}
           onMouseLeave={(event) => {
             if (!isSelected && !isActive && !dragActive) event.currentTarget.style.background = "transparent";
           }}
         >
           {node.type === "folder" ? (
-            <span style={{ color: isSelected ? "#AE7C1A" : "#6B7280", display: "flex", flexShrink: 0 }}>
+            <span style={{ color: isSelected ? "var(--accent-strong)" : "var(--builder-muted)", display: "flex", flexShrink: 0 }}>
               {isOpen ? <IChevD /> : <IChevR />}
             </span>
           ) : (
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor, flexShrink: 0, marginLeft: 4 }} />
           )}
-          <span style={{ color: node.type === "folder" ? (isSelected ? "#F5DEB3" : "#AE7C1A") : isSelected || isActive ? "#E2E8F0" : "#8A93A5", display: "flex", flexShrink: 0 }}>
+          <span style={{ color: node.type === "folder" ? (isSelected ? "var(--accent-alt)" : "var(--accent-strong)") : isSelected || isActive ? "var(--accent-strong)" : "var(--builder-muted-soft)", display: "flex", flexShrink: 0 }}>
             {node.type === "folder" ? <IFolder /> : <IOpenFile />}
           </span>
           <span
             style={{
               fontFamily: "'JetBrains Mono', monospace",
               fontSize: 11.5,
-              color: node.type === "folder" ? (isSelected ? "#F5DEB3" : "#9CA3AF") : isSelected || isActive ? "#E2E8F0" : "#6B7280",
+              color: node.type === "folder" ? (isSelected ? "var(--accent-alt)" : "var(--builder-muted-strong)") : isSelected || isActive ? "var(--text-primary)" : "var(--builder-muted)",
               whiteSpace: "nowrap",
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -1019,7 +1031,7 @@ function FileTreeItem({
                     onStartRename(node);
                   }}
                   title="Rename"
-                  style={{ background: "transparent", border: "none", color: "#94A3B8", cursor: "pointer", display: "flex", padding: 2 }}
+                  style={{ background: "transparent", border: "none", color: "var(--builder-muted-strong)", cursor: "pointer", display: "flex", padding: 2 }}
                 >
                   <IPencil />
                 </button>
@@ -1072,6 +1084,7 @@ function FileTreeItem({
               onCommitDraft={onCommitDraft}
               onCancelDraft={onCancelDraft}
               onDragStart={onDragStart}
+              onDragEnd={onDragEnd}
               onDragOverTarget={onDragOverTarget}
               onDragLeaveTarget={onDragLeaveTarget}
               onDropTarget={onDropTarget}
@@ -1101,6 +1114,7 @@ function FileTree({
   onCommitDraft,
   onCancelDraft,
   onDragStart,
+  onDragEnd,
   onDragOverTarget,
   onDragLeaveTarget,
   onDropTarget,
@@ -1123,6 +1137,7 @@ function FileTree({
   onCommitDraft: () => void;
   onCancelDraft: () => void;
   onDragStart: (node: FileNode) => void;
+  onDragEnd: () => void;
   onDragOverTarget: (node: FileNode) => void;
   onDragLeaveTarget: (node: FileNode) => void;
   onDropTarget: (node: FileNode) => void;
@@ -1169,6 +1184,7 @@ function FileTree({
           onCommitDraft={onCommitDraft}
           onCancelDraft={onCancelDraft}
           onDragStart={onDragStart}
+          onDragEnd={onDragEnd}
           onDragOverTarget={onDragOverTarget}
           onDragLeaveTarget={onDragLeaveTarget}
           onDropTarget={onDropTarget}
@@ -1449,6 +1465,38 @@ const monacoLang = (ext: string): string =>
 export default function BuilderShell() {
   const navigate = useNavigate();
   const { tokens } = useAppTheme();
+  const multitaskingDockApps: DockApp[] = [
+    {
+      id: "docs",
+      name: "Kautilya Docs",
+      icon: <BookOpenText size={20} strokeWidth={1.9} />,
+    },
+    {
+      id: "community",
+      name: "Community",
+      icon: <UsersIcon size={20} strokeWidth={1.9} />,
+    },
+    {
+      id: "wallet",
+      name: "API Wallet",
+      icon: <KeyRound size={20} strokeWidth={1.9} />,
+    },
+    {
+      id: "settings",
+      name: "Dashboard Settings",
+      icon: <Settings2 size={20} strokeWidth={1.9} />,
+    },
+    {
+      id: "calculator",
+      name: "Calculator",
+      icon: <Calculator size={20} strokeWidth={1.9} />,
+    },
+    {
+      id: "timer",
+      name: "Timer",
+      icon: <TimerReset size={20} strokeWidth={1.9} />,
+    },
+  ];
   const [sessionId] = useState(() => {
     if (typeof window === "undefined") return `session_${Date.now()}`;
     const existing = window.localStorage.getItem("kautilya_session_id");
@@ -1518,6 +1566,8 @@ export default function BuilderShell() {
     },
   ]);
   const currentDiff = pendingDiffs[0] ?? null;
+  const consoleEntryIdRef = useRef(1);
+  const sendRequestLockRef = useRef(false);
   const filePickerRef = useRef<HTMLInputElement>(null);
   const folderPickerRef = useRef<HTMLInputElement>(null);
   const attachmentFilePickerRef = useRef<HTMLInputElement>(null);
@@ -1545,11 +1595,14 @@ export default function BuilderShell() {
   }, []);
 
   const appendConsoleEntry = (entry: Omit<ConsoleLine, "id" | "timestamp">) => {
+    const id = consoleEntryIdRef.current;
+    consoleEntryIdRef.current += 1;
+    const timestamp = Date.now();
     setConsoleEntries((prev) => [
       ...prev,
       {
-        id: Date.now() + Math.floor(Math.random() * 1000),
-        timestamp: Date.now(),
+        id,
+        timestamp,
         ...entry,
       },
     ].slice(-500));
@@ -1560,6 +1613,11 @@ export default function BuilderShell() {
       window.clearTimeout(dragExpandTimeoutRef.current);
       dragExpandTimeoutRef.current = null;
     }
+  };
+
+  const clearExplorerDragState = () => {
+    clearDragExpandTimeout();
+    setExplorerDragState(null);
   };
 
   const rebuildLocalTree = () => {
@@ -1586,20 +1644,30 @@ export default function BuilderShell() {
     localFilesRef.current = {};
     localFoldersRef.current = new Set();
     localRootDirRef.current = null;
+    const folderPaths = new Set<string>();
+    let parent = dirnamePath(DEFAULT_WORKSPACE_FILE);
+    while (parent) {
+      folderPaths.add(parent);
+      parent = dirnamePath(parent);
+    }
+    const folderList = Array.from(folderPaths);
+    setFileTree(buildTreeFromEntries([DEFAULT_WORKSPACE_FILE], folderList));
+    setOpenFolders(new Set(folderList));
   };
 
   const refreshFileTree = async () => {
     try {
       const res = await fetch("/api/fs/tree");
+      if (!res.ok) throw new Error(`File tree request failed (${res.status})`);
       const data = await res.json();
-      if (Array.isArray(data)) {
-        setProjectWorkspace();
-        setFileTree(data);
-        const roots = data.filter((entry) => entry.type === "folder").map((entry) => entry.id);
-        setOpenFolders(new Set(roots));
-      }
+      if (!Array.isArray(data)) throw new Error("Invalid file tree payload");
+      setProjectWorkspace();
+      setFileTree(data);
+      const roots = data.filter((entry) => entry.type === "folder").map((entry) => entry.id);
+      setOpenFolders(new Set(roots));
     } catch (err) {
       console.error("Failed to load file tree:", err);
+      setProjectWorkspace();
     }
   };
 
@@ -1612,7 +1680,7 @@ export default function BuilderShell() {
     setSelectedExplorerPath(DEFAULT_WORKSPACE_FILE);
     setCode(STARTER_CODE);
     setExplorerDraft(null);
-    setExplorerDragState(null);
+    clearExplorerDragState();
     setActiveFileState({ kind: "text" });
     await refreshFileTree();
   };
@@ -1638,7 +1706,7 @@ export default function BuilderShell() {
     setSelectedExplorerPath("");
     setCode("");
     setExplorerDraft(null);
-    setExplorerDragState(null);
+    clearExplorerDragState();
     setActiveFileState({ kind: "text" });
     setPanelMode("editor");
     setWorkspaceTab("code");
@@ -1732,6 +1800,12 @@ export default function BuilderShell() {
       return;
     }
 
+    if (workspaceSource === "project" && activeFile === DEFAULT_WORKSPACE_FILE) {
+      setActiveFileState({ kind: "text" });
+      snapshotFile(DEFAULT_WORKSPACE_FILE, STARTER_CODE);
+      return;
+    }
+
     fetch(`/api/fs/file?path=${encodeURIComponent(activeFile)}`)
       .then(r => {
         if (!r.ok) throw new Error("File not found");
@@ -1762,23 +1836,31 @@ export default function BuilderShell() {
 
   useEffect(() => {
     if (!sessionId) return;
-    fetch(`/api/session/keys?sessionId=${encodeURIComponent(sessionId)}`)
-      .then(r => r.json())
-      .then(data => setApiKeyInfo(data.key ?? null))
-      .catch(() => {});
+    const loadJson = async (path: string) => {
+      try {
+        const res = await fetch(path);
+        if (!res.ok) return null;
+        return await res.json();
+      } catch {
+        return null;
+      }
+    };
 
-    fetch(`/api/session/commands?sessionId=${encodeURIComponent(sessionId)}`)
-      .then(r => r.json())
-      .then(data => setPersistentCommands({
-        ...DEFAULT_PERSISTENT_COMMANDS,
-        ...(data.persistentCommands ?? {}),
-      }))
-      .catch(() => {});
+    void (async () => {
+      const keyData = await loadJson(`/api/session/keys?sessionId=${encodeURIComponent(sessionId)}`);
+      if (keyData) setApiKeyInfo(keyData.key ?? null);
 
-    fetch(`/api/session/sketch?sessionId=${encodeURIComponent(sessionId)}`)
-      .then(r => r.json())
-      .then(data => {
-        const nextSketch = data.sketch;
+      const commandsData = await loadJson(`/api/session/commands?sessionId=${encodeURIComponent(sessionId)}`);
+      if (commandsData) {
+        setPersistentCommands({
+          ...DEFAULT_PERSISTENT_COMMANDS,
+          ...(commandsData.persistentCommands ?? {}),
+        });
+      }
+
+      const sketchData = await loadJson(`/api/session/sketch?sessionId=${encodeURIComponent(sessionId)}`);
+      if (sketchData) {
+        const nextSketch = sketchData.sketch;
         if (nextSketch && Array.isArray(nextSketch.elements)) {
           setSketchBoard({
             ...createEmptySketchDocument(),
@@ -1786,19 +1868,15 @@ export default function BuilderShell() {
             elements: nextSketch.elements ?? [],
           });
         }
-      })
-      .catch(() => {})
-      .finally(() => setSketchBoardLoaded(true));
+      }
+      setSketchBoardLoaded(true);
 
-    fetch(`/api/credits?sessionId=${encodeURIComponent(sessionId)}`)
-      .then(r => r.json())
-      .then(data => setCreditStatus(data.credit ?? null))
-      .catch(() => {});
+      const creditData = await loadJson(`/api/credits?sessionId=${encodeURIComponent(sessionId)}`);
+      if (creditData) setCreditStatus(creditData.credit ?? null);
 
-    fetch(`/api/checkpoint?sessionId=${encodeURIComponent(sessionId)}`)
-      .then(r => r.json())
-      .then(data => {
-        const cp = data.checkpoint;
+      const checkpointData = await loadJson(`/api/checkpoint?sessionId=${encodeURIComponent(sessionId)}`);
+      if (checkpointData) {
+        const cp = checkpointData.checkpoint;
         if (!cp) return;
         const next: Record<string, FileStatus> = {};
         (cp.filesCompleted ?? []).forEach((f: string) => { next[f] = "done"; });
@@ -1811,8 +1889,8 @@ export default function BuilderShell() {
             { id: `msg_${Date.now()}_resume`, role: "system", content: `Resume checkpoint loaded (${cp.filesCompleted?.length ?? 0} files done).`, status: "done" },
           ]);
         }
-      })
-      .catch(() => {});
+      }
+    })();
   }, [sessionId]);
 
   useEffect(() => {
@@ -2027,7 +2105,7 @@ export default function BuilderShell() {
     if (data.stdout) appendConsoleEntry({ source: "runtime", level: "info", text: data.stdout });
     if (data.stderr) appendConsoleEntry({ source: "runtime", level: "warn", text: data.stderr });
     if (data.error) appendConsoleEntry({ source: "system", level: "error", text: data.error });
-    const output = [data.stdout, data.stderr, data.error ? `Error: ${data.error}` : "", data.code !== undefined ? `Exit ${data.code} ï¿½ ${data.runtime ?? "runtime"}` : ""].filter(Boolean).join("\n");
+    const output = [data.stdout, data.stderr, data.error ? `Error: ${data.error}` : "", data.code !== undefined ? `Exit ${data.code} • ${data.runtime ?? "runtime"}` : ""].filter(Boolean).join("\n");
     return output || "(no output)";
   };
 
@@ -2063,7 +2141,7 @@ export default function BuilderShell() {
       return;
     }
     if (data.type === "decision_done") {
-      addSystemMessage(`Decision: tier ${data.tier} ï¿½ ${data.language ?? "unknown"}`, "done");
+      addSystemMessage(`Decision: tier ${data.tier} • ${data.language ?? "unknown"}`, "done");
       return;
     }
     if (data.type === "king_decision") {
@@ -2306,7 +2384,7 @@ export default function BuilderShell() {
       return;
     }
     if (data.type === "king_override") {
-      addSystemMessage(`King override: ${data.verdict} ï¿½ ${data.reason || ""}`, "done");
+      addSystemMessage(`King override: ${data.verdict} • ${data.reason || ""}`, "done");
       return;
     }
     if (data.type === "warning") {
@@ -2477,65 +2555,67 @@ export default function BuilderShell() {
 
   const handleSend = async () => {
     let text = input.trim();
-    if ((!text && draftCommands.length === 0) || sending) return;
-
-    const utilityCommands = draftCommands.filter((chip) => chip.type === "utility").map((chip) => chip.name);
-    if (commandResolution.errors.length > 0) {
-      addSystemMessage(commandResolution.errors[0], "error");
-      return;
-    }
-    if (utilityCommands.length > 0 && text) {
-      addSystemMessage("Utility slash commands must be sent without a prompt body.", "error");
-      return;
-    }
-
-    if (!text) {
-      text = buildImplicitCommandRequest(commandResolution.directives.intent);
-    }
-
-    const displayText = text || draftCommands.map((chip) => chip.token).join(" ");
-    const attachments = draftAttachments.map(({ id, name, kind, size, mimeType }) => ({ id, name, kind, size, mimeType }));
-    const effectiveParallelAgents: ParallelAgentPreferences = {
-      webResearch: parallelAgents.webResearch || Boolean(commandResolution.directives.parallelAgents?.webResearch),
-      designInspiration: parallelAgents.designInspiration || Boolean(commandResolution.directives.parallelAgents?.designInspiration),
-    };
-    const meta = {
-      variant,
-      section,
-      medium,
-      attachments,
-      sketchNotesCount: sketchNotes.length,
-      parallelAgents: effectiveParallelAgents,
-      commands: draftCommands.map((chip) => chip.token),
-      persistentCommands,
-    };
-    const userId = makeId();
-    const assistantId = makeId();
-
-    const onlyPersistentToggle = !text && draftCommands.every((chip) => chip.type === "persistent");
-    const isUtilityOnly = !text && utilityCommands.length > 0;
-    if (!text && !onlyPersistentToggle && !isUtilityOnly && commandResolution.directives.intent !== "destroy") {
-      addSystemMessage("Add a request after your slash commands.", "error");
-      return;
-    }
-
-    appendMessage({ id: userId, role: "user", content: displayText, status: "done", meta });
-    appendMessage({ id: assistantId, role: "assistant", content: "", status: "queued", meta: { variant, section, medium } });
-    setInput("");
-    setDraftAttachments([]);
-    resetDraftCommands();
-    setSending(true);
-    setStatus("Queued...");
-    setFileStatus({});
-    setParallelAgentStates({
-      webResearch: effectiveParallelAgents.webResearch ? "requested" : "idle",
-      designInspiration: effectiveParallelAgents.designInspiration ? "requested" : "idle",
-    });
-    setAgentWorkflows([]);
-    setWorkflowRailOpen(false);
-    setActiveAssistantId(assistantId);
+    if ((!text && draftCommands.length === 0) || sending || sendRequestLockRef.current) return;
+    sendRequestLockRef.current = true;
+    let assistantId = "";
 
     try {
+      const utilityCommands = draftCommands.filter((chip) => chip.type === "utility").map((chip) => chip.name);
+      if (commandResolution.errors.length > 0) {
+        addSystemMessage(commandResolution.errors[0], "error");
+        return;
+      }
+      if (utilityCommands.length > 0 && text) {
+        addSystemMessage("Utility slash commands must be sent without a prompt body.", "error");
+        return;
+      }
+
+      if (!text) {
+        text = buildImplicitCommandRequest(commandResolution.directives.intent);
+      }
+
+      const displayText = text || draftCommands.map((chip) => chip.token).join(" ");
+      const attachments = draftAttachments.map(({ id, name, kind, size, mimeType }) => ({ id, name, kind, size, mimeType }));
+      const effectiveParallelAgents: ParallelAgentPreferences = {
+        webResearch: parallelAgents.webResearch || Boolean(commandResolution.directives.parallelAgents?.webResearch),
+        designInspiration: parallelAgents.designInspiration || Boolean(commandResolution.directives.parallelAgents?.designInspiration),
+      };
+      const meta = {
+        variant,
+        section,
+        medium,
+        attachments,
+        sketchNotesCount: sketchNotes.length,
+        parallelAgents: effectiveParallelAgents,
+        commands: draftCommands.map((chip) => chip.token),
+        persistentCommands,
+      };
+      const userId = makeId();
+      assistantId = makeId();
+
+      const onlyPersistentToggle = !text && draftCommands.every((chip) => chip.type === "persistent");
+      const isUtilityOnly = !text && utilityCommands.length > 0;
+      if (!text && !onlyPersistentToggle && !isUtilityOnly && commandResolution.directives.intent !== "destroy") {
+        addSystemMessage("Add a request after your slash commands.", "error");
+        return;
+      }
+
+      appendMessage({ id: userId, role: "user", content: displayText, status: "done", meta });
+      appendMessage({ id: assistantId, role: "assistant", content: "", status: "queued", meta: { variant, section, medium } });
+      setInput("");
+      setDraftAttachments([]);
+      resetDraftCommands();
+      setSending(true);
+      setStatus("Queued...");
+      setFileStatus({});
+      setParallelAgentStates({
+        webResearch: effectiveParallelAgents.webResearch ? "requested" : "idle",
+        designInspiration: effectiveParallelAgents.designInspiration ? "requested" : "idle",
+      });
+      setAgentWorkflows([]);
+      setWorkflowRailOpen(false);
+      setActiveAssistantId(assistantId);
+
       if (Object.keys(commandResolution.toggledPersistent).length > 0) {
         await persistCommands(commandResolution.nextPersistent as Record<PersistentCommandKey, boolean>);
       }
@@ -2597,11 +2677,14 @@ export default function BuilderShell() {
         );
       }
     } catch (err: any) {
-      updateMessage(assistantId, { status: "error", content: err?.message || "Request failed." });
+      if (assistantId) {
+        updateMessage(assistantId, { status: "error", content: err?.message || "Request failed." });
+      }
       setStatus("Error");
       setActiveAssistantId((prev) => (prev === assistantId ? null : prev));
     } finally {
       setSending(false);
+      sendRequestLockRef.current = false;
     }
   };
 
@@ -3034,8 +3117,13 @@ export default function BuilderShell() {
 
   const handleExplorerDragStart = (node: FileNode) => {
     if (!canMoveExplorerItem) return;
+    clearDragExpandTimeout();
     setSelectedExplorerPath(node.id);
     setExplorerDragState({ sourceId: node.id, sourceType: node.type, targetId: null, valid: false });
+  };
+
+  const handleExplorerDragEnd = () => {
+    clearExplorerDragState();
   };
 
   const handleExplorerDragOverTarget = (node: FileNode) => {
@@ -3061,13 +3149,13 @@ export default function BuilderShell() {
     clearDragExpandTimeout();
     const state = explorerDragState;
     if (!state || !validateDropTarget(state, node)) {
-      setExplorerDragState(null);
+      clearExplorerDragState();
       return;
     }
     const name = state.sourceId.split("/").pop() ?? state.sourceId;
     const nextPath = normalizeEntryPath(`${node.id}/${name}`);
     if (nextPath === state.sourceId) {
-      setExplorerDragState(null);
+      clearExplorerDragState();
       return;
     }
     try {
@@ -3076,7 +3164,7 @@ export default function BuilderShell() {
     } catch (err: any) {
       addSystemMessage(err?.message || "Unable to move explorer item.", "error");
     } finally {
-      setExplorerDragState(null);
+      clearExplorerDragState();
     }
   };
 
@@ -3087,7 +3175,7 @@ export default function BuilderShell() {
     const name = state.sourceId.split("/").pop() ?? state.sourceId;
     const nextPath = normalizeEntryPath(name);
     if (!nextPath || nextPath === state.sourceId) {
-      setExplorerDragState(null);
+      clearExplorerDragState();
       return;
     }
     try {
@@ -3096,7 +3184,7 @@ export default function BuilderShell() {
     } catch (err: any) {
       addSystemMessage(err?.message || "Unable to move explorer item.", "error");
     } finally {
-      setExplorerDragState(null);
+      clearExplorerDragState();
     }
   };
 
@@ -3285,7 +3373,7 @@ export default function BuilderShell() {
                   : <span style={{ color: "var(--builder-muted-soft)" }}>{workspaceLabel}</span>}
               </div>
               {workspaceSource === "local" ? (
-                <div style={{ fontFamily: "'SF Mono','JetBrains Mono',monospace", fontSize: 9, color: localReadOnly ? "#d97706" : "var(--accent-strong)", letterSpacing: "0.08em", whiteSpace: "nowrap" }}>
+                <div style={{ fontFamily: "'SF Mono','JetBrains Mono',monospace", fontSize: 9, color: localReadOnly ? "var(--accent-alt)" : "var(--accent-strong)", letterSpacing: "0.08em", whiteSpace: "nowrap" }}>
                   {localReadOnly ? "LOCAL READ ONLY" : "LOCAL FOLDER"}
                 </div>
               ) : null}
@@ -3363,7 +3451,7 @@ export default function BuilderShell() {
                     <button className="ghost-btn" onClick={() => void openSystemFile()}>Open File</button>
                     <button className="ghost-btn" onClick={() => void openSystemFolder()}>Open Folder</button>
                     {workspaceSource === "local" ? <button className="ghost-btn" onClick={() => void openProjectWorkspace()}>Project</button> : null}
-                    {localReadOnly ? <span style={{ fontFamily: "'SF Mono','JetBrains Mono',monospace", fontSize: 9, color: "#d97706", letterSpacing: "0.08em", alignSelf: "center" }}>READ ONLY</span> : null}
+                    {localReadOnly ? <span style={{ fontFamily: "'SF Mono','JetBrains Mono',monospace", fontSize: 9, color: "var(--accent-alt)", letterSpacing: "0.08em", alignSelf: "center" }}>READ ONLY</span> : null}
                   </div>
                   <FileTree
                     tree={fileTree}
@@ -3383,6 +3471,7 @@ export default function BuilderShell() {
                     onCommitDraft={() => void commitExplorerDraft()}
                     onCancelDraft={() => setExplorerDraft(null)}
                     onDragStart={handleExplorerDragStart}
+                    onDragEnd={handleExplorerDragEnd}
                     onDragOverTarget={handleExplorerDragOverTarget}
                     onDragLeaveTarget={handleExplorerDragLeaveTarget}
                     onDropTarget={(node) => void handleExplorerDropTarget(node)}
@@ -3524,6 +3613,11 @@ export default function BuilderShell() {
           <span>UTF-8</span>
         </div>
       </div>
+      <MacOSDock
+        apps={multitaskingDockApps}
+        className="fixed bottom-5 left-1/2 z-[210] hidden -translate-x-1/2 lg:block"
+        onAppClick={() => {}}
+      />
     </>
   );
 }

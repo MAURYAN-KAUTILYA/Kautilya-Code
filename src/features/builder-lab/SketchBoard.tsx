@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 
 type Tool = "select" | "pencil" | "shapes" | "line" | "sticky" | "text";
@@ -224,15 +224,19 @@ function strokePath(points: SketchPoint[], width: number, height: number) {
   if (!points.length) return "";
   const first = denormalizePoint(points[0], width, height);
   if (points.length === 1) return `M ${first.x} ${first.y}`;
+  if (points.length === 2) {
+    const second = denormalizePoint(points[1], width, height);
+    return `M ${first.x} ${first.y} L ${second.x} ${second.y}`;
+  }
   const segments: string[] = [`M ${first.x} ${first.y}`];
-  for (let i = 1; i < points.length; i += 1) {
-    const prev = denormalizePoint(points[i - 1], width, height);
+  for (let i = 1; i < points.length - 1; i += 1) {
     const curr = denormalizePoint(points[i], width, height);
-    const mid = midpoint(prev, curr);
-    segments.push(`Q ${prev.x} ${prev.y} ${mid.x} ${mid.y}`);
+    const next = denormalizePoint(points[i + 1], width, height);
+    const mid = midpoint(curr, next);
+    segments.push(`Q ${curr.x} ${curr.y} ${mid.x} ${mid.y}`);
   }
   const last = denormalizePoint(points[points.length - 1], width, height);
-  segments.push(`T ${last.x} ${last.y}`);
+  segments.push(`L ${last.x} ${last.y}`);
   return segments.join(" ");
 }
 
@@ -407,6 +411,8 @@ function IconText() { return <svg viewBox="0 0 24 24" width="18" height="18" fil
 function IconClose() { return <svg viewBox="0 0 24 24" width="18" height="18" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>; }
 function IconMove() { return <svg viewBox="0 0 24 24" width="16" height="16" fill="none"><path d="M12 4v16M4 12h16" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>; }
 function IconResize() { return <svg viewBox="0 0 24 24" width="16" height="16" fill="none"><path d="M8 16l8-8M13 16h3v-3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>; }
+function IconDelete() { return <svg viewBox="0 0 24 24" width="16" height="16" fill="none"><path d="M6 7h12M9 7V5h6v2M10 11v5M14 11v5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /><path d="M7 7l1 11a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-11" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /></svg>; }
+function IconDuplicate() { return <svg viewBox="0 0 24 24" width="16" height="16" fill="none"><rect x="8" y="8" width="10" height="10" rx="2" stroke="currentColor" strokeWidth="1.6" /><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" stroke="currentColor" strokeWidth="1.6" /></svg>; }
 export function HeaderButton({ active, children, title, onClick }: { active?: boolean; children: ReactNode; title: string; onClick: () => void }) {
   return (
     <button
@@ -519,6 +525,9 @@ export default function SketchBoard({ open, value, defaultValue, onChange, onCon
   const [selectedIds, setSelectedIds] = useState<string[]>(() => (selectedId ? [selectedId] : []));
   const latestSceneRef = useLatest(scene);
   const overlayRef = useRef<HTMLDivElement | null>(null);
+  // Accumulates stroke points in a ref so rapid pointermove events can't lose
+  // intermediate points due to stale closures (state update hasn't flushed yet).
+  const livePointsRef = useRef<SketchPoint[]>([]);
 
   const emitChange = useCallback((next: SketchBoardValue) => { if (!isControlled) setInternalValue(next); onChange?.(next); }, [isControlled, onChange]);
   const updateScene = useCallback((patch: Partial<SketchBoardValue>) => emitChange({ ...latestSceneRef.current, ...patch }), [emitChange, latestSceneRef]);
@@ -532,16 +541,43 @@ export default function SketchBoard({ open, value, defaultValue, onChange, onCon
     setSelectedIds(uniqueIds);
     emitChange({ ...latestSceneRef.current, selectedId: primary });
   }, [emitChange, latestSceneRef]);
+  // Use functional setInternalValue so rapid back-to-back calls (e.g. fast pointer moves)
+  // chain correctly instead of each overwriting the other with the same stale base.
   const patchElements = useCallback((updater: (list: SketchElement[]) => SketchElement[]) => {
-    const currentElements = latestSceneRef.current.elements ?? [];
-    emitChange({ ...latestSceneRef.current, elements: updater(currentElements) });
-  }, [emitChange, latestSceneRef]);
+    if (!isControlled) {
+      setInternalValue((prev) => ({ ...prev, elements: updater(prev.elements ?? []) }));
+    }
+    if (onChange) {
+      onChange({ ...latestSceneRef.current, elements: updater(latestSceneRef.current.elements ?? []) });
+    }
+  }, [isControlled, onChange, latestSceneRef]);
 
-  const getBoardPoint = useCallback((e: PointerEvent | ReactPointerEvent): SketchPoint => {
-    const rect = boardRef.current?.getBoundingClientRect();
-    if (!rect) return { x: 0, y: 0 };
-    return { x: clamp(e.clientX - rect.left, 0, rect.width), y: clamp(e.clientY - rect.top, 0, rect.height) };
-  }, [boardRef]);
+  const getBoardPoint = useCallback((e: React.PointerEvent<Element> | PointerEvent) => {
+    const el = boardRef.current;
+    if (!el) return { x: 0, y: 0 };
+    
+    const rect = el.getBoundingClientRect();
+    const cs = getComputedStyle(el);
+    const bL = parseFloat(cs.borderLeftWidth) || 0;
+    const bT = parseFloat(cs.borderTopWidth) || 0;
+    
+    const contentW = rect.width - bL - (parseFloat(cs.borderRightWidth) || 0);
+    const contentH = rect.height - bT - (parseFloat(cs.borderBottomWidth) || 0);
+    
+    const px = e.clientX - rect.left - bL;
+    const py = e.clientY - rect.top - bT;
+    
+    const vbW = size.width || contentW;
+    const vbH = size.height || contentH;
+    
+    const svgX = (px / (contentW || 1)) * vbW;
+    const svgY = (py / (contentH || 1)) * vbH;
+    
+    return { 
+      x: clamp(svgX, 0, vbW), 
+      y: clamp(svgY, 0, vbH) 
+    };
+  }, [boardRef, size.width, size.height]);
 
   const notes = useMemo(() => elements.filter((entry): entry is SketchSticky => entry.type === "sticky" && entry.text.trim().length > 0).map((entry) => entry.text.trim()), [elements]);
   const textBlocks = useMemo(() => elements.filter((entry): entry is SketchText => entry.type === "text" && entry.text.trim().length > 0).map((entry) => entry.text.trim()), [elements]);
@@ -553,6 +589,8 @@ export default function SketchBoard({ open, value, defaultValue, onChange, onCon
   useEffect(() => {
     setSelectedIds((current) => {
       const valid = current.filter((id) => elements.some((entry) => entry.id === id));
+      // If selectedId is defined but not already the primary selection, adopt it.
+      if (selectedId && !valid.includes(selectedId)) return selectedId ? [selectedId] : [];
       if (valid.length) return valid;
       return selectedId ? [selectedId] : [];
     });
@@ -645,9 +683,11 @@ export default function SketchBoard({ open, value, defaultValue, onChange, onCon
 
   const startStroke = (point: SketchPoint) => {
     const id = createId("stroke");
-    const stroke: SketchStroke = { id, type: "stroke", x: 0, y: 0, points: [normalizePoint(point, size.width, size.height)], color: brush.color, width: brush.width, brush: brush.kind };
+    const initialPoints = [normalizePoint(point, size.width, size.height)];
+    livePointsRef.current = initialPoints;
+    const stroke: SketchStroke = { id, type: "stroke", x: 0, y: 0, points: initialPoints, color: brush.color, width: brush.width, brush: brush.kind };
     emitChange({ ...latestSceneRef.current, elements: [...(latestSceneRef.current.elements ?? []), stroke], selectedId: id });
-    setDragState({ kind: "draw-stroke", id, start: point, points: [normalizePoint(point, size.width, size.height)], brush: brush.kind, color: brush.color, width: brush.width });
+    setDragState({ kind: "draw-stroke", id, start: point, points: initialPoints, brush: brush.kind, color: brush.color, width: brush.width });
   };
 
   const startLine = (point: SketchPoint) => {
@@ -692,6 +732,7 @@ export default function SketchBoard({ open, value, defaultValue, onChange, onCon
     if (e.button !== 0) return;
     const target = e.target as HTMLElement;
     if (target.closest("[data-no-board-draw='true']")) return;
+    closePopover();
     const point = getBoardPoint(e);
     if (activeTool === "pencil") return startStroke(point);
     if (activeTool === "line") return startLine(point);
@@ -705,8 +746,10 @@ export default function SketchBoard({ open, value, defaultValue, onChange, onCon
       if (dragState.kind === "none") return;
       const point = getBoardPoint(event);
       if (dragState.kind === "draw-stroke") {
-        const nextPoints = [...dragState.points, normalizePoint(point, size.width, size.height)];
-        setDragState({ ...dragState, points: nextPoints });
+        // Push directly to the ref so no points are dropped between renders.
+        livePointsRef.current = [...livePointsRef.current, normalizePoint(point, size.width, size.height)];
+        const nextPoints = livePointsRef.current;
+        setDragState((prev) => (prev.kind === "draw-stroke" ? { ...prev, points: nextPoints } : prev));
         patchElements((list) => list.map((entry) => (entry.id === dragState.id && entry.type === "stroke" ? { ...entry, points: nextPoints } : entry)));
         return;
       }
@@ -873,7 +916,7 @@ export default function SketchBoard({ open, value, defaultValue, onChange, onCon
           <div><div style={{ fontSize: 12, letterSpacing: "0.18em", textTransform: "uppercase", color: "#64748B", fontWeight: 700 }}>Sketch Your Design</div><div style={{ fontSize: 13, color: "#0F172A", marginTop: 5 }}>Apple-inspired whiteboard with selectable pages, lines, notes, and text.</div></div>
           <button type="button" onClick={() => onClose?.()} style={{ width: 42, height: 42, borderRadius: 999, border: "1px solid rgba(148,163,184,0.18)", background: "rgba(255,255,255,0.9)", color: "#1F2937", cursor: "pointer", display: "grid", placeItems: "center", boxShadow: "0 10px 20px rgba(15,23,42,0.10)" }}><IconClose /></button>
         </div>
-        <div style={{ flex: 1, minHeight: 0, display: "flex", padding: 16, gap: 16, background: "linear-gradient(180deg, rgba(246,248,252,1), rgba(241,245,249,0.92))" }}>
+        <div style={{ flex: 1, minHeight: 0, display: "flex", padding: 16, gap: 16, background: "linear-gradient(180deg, rgba(246,248,252,1), rgba(241,245,249,0.92))", position: "relative" }}>
           <div style={{ width: 74, flexShrink: 0, position: "relative" }}>
             <div style={{ position: "absolute", inset: 0, borderRadius: 28, background: "rgba(255,255,255,0.78)", border: "1px solid rgba(148,163,184,0.16)", boxShadow: "0 14px 34px rgba(15,23,42,0.08)", backdropFilter: "blur(14px)", display: "flex", flexDirection: "column", alignItems: "center", padding: "14px 10px", gap: 10 }}>
               {toolButton("select", <IconSelect />, "Select")}
@@ -905,7 +948,7 @@ export default function SketchBoard({ open, value, defaultValue, onChange, onCon
               <Flyout title="Shapes" onClose={closePopover} align="left">
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
                   {([["square", "Square"], ["rounded", "Rounded"], ["circle", "Circle"], ["triangle", "Triangle"], ["triangleDown", "Down"], ["diamond", "Diamond"], ["pentagon", "Pentagon"]] as Array<[ShapeKind, string]>).map(([kind, label]) => (
-                    <button key={kind} type="button" onClick={() => { updateScene({ shapeKind: kind, tool: "shapes" }); createElementFromCenter(createShape); closePopover(); }} style={{ border: shapeKind === kind ? "1px solid rgba(91,115,255,0.4)" : "1px solid rgba(148,163,184,0.16)", background: "rgba(255,255,255,0.88)", borderRadius: 16, padding: "12px 10px", color: "#0F172A", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                    <button key={kind} type="button" onClick={() => { updateScene({ shapeKind: kind, tool: "shapes" }); createElementFromCenter((center) => ({ ...createShape(center), kind })); closePopover(); }} style={{ border: shapeKind === kind ? "1px solid rgba(91,115,255,0.4)" : "1px solid rgba(148,163,184,0.16)", background: "rgba(255,255,255,0.88)", borderRadius: 16, padding: "12px 10px", color: "#0F172A", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
                       <svg viewBox="0 0 48 36" width="40" height="28" fill="none"><path d={shapePath(kind, { x: 6, y: 5, w: 36, h: 24 })} fill={SHAPE_FILL} stroke={SHAPE_STROKE} strokeWidth="1.5" /></svg>
                       <span style={{ fontSize: 11, color: "#334155" }}>{label}</span>
                     </button>
@@ -936,12 +979,138 @@ export default function SketchBoard({ open, value, defaultValue, onChange, onCon
             ) : null}
           </div>
 
-          <div ref={boardRef} onPointerDown={handleBoardPointerDown} style={{ flex: 1, minWidth: 0, position: "relative", borderRadius: 30, background: "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(249,250,251,0.96))", border: "1px solid rgba(148,163,184,0.15)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.9), 0 16px 42px rgba(15,23,42,0.10)", overflow: "hidden" }}>
+          {/* ── Selection Card ─────────────────────────────────── */}
+          {selectedElement && activeTool === "select" && !isEditing ? (
+            <div data-no-board-draw="true" style={{
+              position: "absolute",
+              left: 98,
+              top: 18,
+              width: 220,
+              zIndex: 30,
+              background: "rgba(255,255,255,0.92)",
+              backdropFilter: "blur(22px)",
+              WebkitBackdropFilter: "blur(22px)",
+              border: "1px solid rgba(148,163,184,0.18)",
+              borderRadius: 22,
+              boxShadow: "0 20px 52px rgba(15,23,42,0.16), 0 0 0 1px rgba(255,255,255,0.6) inset",
+              overflow: "hidden",
+            }}>
+              {/* Card Header */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px 10px", borderBottom: "1px solid rgba(15,23,42,0.06)" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.11em", textTransform: "uppercase", color: "#52607A" }}>
+                  {selectedElement.type === "stroke" ? "Stroke" : selectedElement.type === "shape" ? "Shape" : selectedElement.type === "line" ? "Line" : selectedElement.type === "sticky" ? "Sticky Note" : "Text"}
+                </div>
+                <button type="button" onClick={() => updateSelection(null)} style={{ border: "none", background: "transparent", color: "#64748B", cursor: "pointer", display: "grid", placeItems: "center" }}><IconClose /></button>
+              </div>
+
+              {/* Card Body */}
+              <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+                {/* Color display */}
+                {(selectedElement.type === "stroke" || selectedElement.type === "line") ? (
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: "#94A3B8", marginBottom: 6, letterSpacing: "0.06em" }}>COLOR</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {COLORS.map((color) => (
+                        <button key={color} type="button" onClick={() => {
+                          patchElements((list) => list.map((entry) => {
+                            if (entry.id !== selectedElement.id) return entry;
+                            if (entry.type === "stroke") return { ...entry, color };
+                            if (entry.type === "line") return { ...entry, color };
+                            return entry;
+                          }));
+                        }} style={{
+                          width: 22, height: 22, borderRadius: 999,
+                          border: (selectedElement.type === "stroke" || selectedElement.type === "line") && (selectedElement as SketchStroke | SketchLine).color === color ? "2px solid rgba(15,23,42,0.8)" : "2px solid rgba(255,255,255,0.8)",
+                          background: color, boxShadow: "0 4px 10px rgba(15,23,42,0.10)", cursor: "pointer",
+                        }} />
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                {selectedElement.type === "sticky" ? (
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: "#94A3B8", marginBottom: 6, letterSpacing: "0.06em" }}>COLOR</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {STICKY_COLORS.map((color) => (
+                        <button key={color} type="button" onClick={() => {
+                          patchElements((list) => list.map((entry) => entry.id === selectedElement.id && entry.type === "sticky" ? { ...entry, color } : entry));
+                        }} style={{
+                          width: 22, height: 22, borderRadius: 999,
+                          border: (selectedElement as SketchSticky).color === color ? "2px solid rgba(15,23,42,0.8)" : "2px solid rgba(255,255,255,0.8)",
+                          background: color, boxShadow: "0 4px 10px rgba(15,23,42,0.10)", cursor: "pointer",
+                        }} />
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* Dimensions */}
+                {(selectedElement.type === "shape" || selectedElement.type === "sticky" || selectedElement.type === "text") ? (
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <div style={{ flex: 1, borderRadius: 12, border: "1px solid rgba(148,163,184,0.16)", background: "rgba(248,250,252,0.8)", padding: "8px 10px" }}>
+                      <div style={{ fontSize: 9, fontWeight: 600, color: "#94A3B8", letterSpacing: "0.06em" }}>W</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "#1E293B", fontFamily: "ui-monospace, SFMono-Regular, monospace" }}>{Math.round((selectedElement as SketchShape | SketchSticky | SketchText).w * size.width)}px</div>
+                    </div>
+                    <div style={{ flex: 1, borderRadius: 12, border: "1px solid rgba(148,163,184,0.16)", background: "rgba(248,250,252,0.8)", padding: "8px 10px" }}>
+                      <div style={{ fontSize: 9, fontWeight: 600, color: "#94A3B8", letterSpacing: "0.06em" }}>H</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "#1E293B", fontFamily: "ui-monospace, SFMono-Regular, monospace" }}>{Math.round((selectedElement as SketchShape | SketchSticky | SketchText).h * size.height)}px</div>
+                    </div>
+                  </div>
+                ) : null}
+                {selectedElement.type === "line" ? (
+                  <div style={{ borderRadius: 12, border: "1px solid rgba(148,163,184,0.16)", background: "rgba(248,250,252,0.8)", padding: "8px 10px" }}>
+                    <div style={{ fontSize: 9, fontWeight: 600, color: "#94A3B8", letterSpacing: "0.06em" }}>LENGTH</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#1E293B", fontFamily: "ui-monospace, SFMono-Regular, monospace" }}>
+                      {Math.round(dist(
+                        denormalizePoint({ x: selectedElement.x1, y: selectedElement.y1 }, size.width, size.height),
+                        denormalizePoint({ x: selectedElement.x2, y: selectedElement.y2 }, size.width, size.height),
+                      ))}px
+                    </div>
+                  </div>
+                ) : null}
+                {selectedElement.type === "stroke" ? (
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <div style={{ flex: 1, borderRadius: 12, border: "1px solid rgba(148,163,184,0.16)", background: "rgba(248,250,252,0.8)", padding: "8px 10px" }}>
+                      <div style={{ fontSize: 9, fontWeight: 600, color: "#94A3B8", letterSpacing: "0.06em" }}>BRUSH</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#1E293B", textTransform: "capitalize" }}>{(selectedElement as SketchStroke).brush}</div>
+                    </div>
+                    <div style={{ flex: 1, borderRadius: 12, border: "1px solid rgba(148,163,184,0.16)", background: "rgba(248,250,252,0.8)", padding: "8px 10px" }}>
+                      <div style={{ fontSize: 9, fontWeight: 600, color: "#94A3B8", letterSpacing: "0.06em" }}>WIDTH</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "#1E293B", fontFamily: "ui-monospace, SFMono-Regular, monospace" }}>{(selectedElement as SketchStroke).width}px</div>
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* Actions */}
+                <div style={{ display: "flex", gap: 6, paddingTop: 4 }}>
+                  <button type="button" title="Duplicate" onClick={() => {
+                    const clone = { ...selectedElement, id: createId(selectedElement.type) };
+                    if ("x" in clone && "y" in clone && clone.type !== "line") {
+                      (clone as any).x = Math.min((clone as any).x + 0.02, 0.9);
+                      (clone as any).y = Math.min((clone as any).y + 0.02, 0.9);
+                    }
+                    emitChange({ ...latestSceneRef.current, elements: [...(latestSceneRef.current.elements ?? []), clone], selectedId: clone.id });
+                  }} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "9px 0", borderRadius: 14, border: "1px solid rgba(148,163,184,0.16)", background: "rgba(255,255,255,0.88)", color: "#334155", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
+                    <IconDuplicate /> Duplicate
+                  </button>
+                  <button type="button" title="Delete" onClick={() => {
+                    setSelectedIds([]);
+                    emitChange({ ...latestSceneRef.current, elements: (latestSceneRef.current.elements ?? []).filter((entry) => entry.id !== selectedElement.id), selectedId: null });
+                  }} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "9px 0", borderRadius: 14, border: "1px solid rgba(239,68,68,0.2)", background: "rgba(239,68,68,0.06)", color: "#DC2626", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
+                    <IconDelete /> Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          <div ref={boardRef} onPointerDown={handleBoardPointerDown} style={{ flex: 1, minWidth: 0, position: "relative", borderRadius: 30, background: "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(249,250,251,0.96))", border: "1px solid rgba(148,163,184,0.15)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.9), 0 16px 42px rgba(15,23,42,0.10)", overflow: "hidden", cursor: activeTool === "pencil" ? "crosshair" : activeTool === "line" ? "crosshair" : activeTool === "shapes" ? "crosshair" : activeTool === "sticky" ? "crosshair" : activeTool === "text" ? "text" : "default" }}>
             <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(148,163,184,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.06) 1px, transparent 1px)", backgroundSize: "28px 28px", opacity: 0.45, pointerEvents: "none" }} />
-            <svg width="100%" height="100%" viewBox={`0 0 ${size.width || BOARD_W} ${size.height || BOARD_H}`} style={{ position: "absolute", inset: 0, overflow: "visible" }}>
+            <svg width="100%" height="100%" viewBox={`0 0 ${size.width || BOARD_W} ${size.height || BOARD_H}`} shapeRendering="geometricPrecision" style={{ position: "absolute", inset: 0, overflow: "visible" }}>
               <defs>
                 <linearGradient id="sketch-stroke" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#4154D6" /><stop offset="100%" stopColor="#A855F7" /></linearGradient>
-                <filter id="shadow-soft" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="10" stdDeviation="12" floodColor="#0F172A" floodOpacity="0.12" /></filter>
+                <filter id="shadow-soft" x="-10%" y="-10%" width="120%" height="120%"><feDropShadow dx="0" dy="4" stdDeviation="6" floodColor="#0F172A" floodOpacity="0.08" /></filter>
+                <marker id="arrowhead" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L10 4 L0 8 Z" fill="currentColor" opacity="0.7" /></marker>
               </defs>
               {elements.map((entry) => {
                 if (entry.type === "stroke") {
@@ -962,7 +1131,7 @@ export default function SketchBoard({ open, value, defaultValue, onChange, onCon
                   return (
                     <g key={entry.id}>
                       <path d={d} fill="none" stroke="transparent" strokeWidth={Math.max(entry.width + 12, 14)} strokeLinecap="round" strokeLinejoin="round" pointerEvents="stroke" onPointerDown={(event) => handleElementPointerDown(entry, event)} style={{ cursor: activeTool === "select" ? "move" : "pointer" }} />
-                      <path d={d} fill="none" stroke={entry.color} strokeWidth={entry.width} strokeLinecap="round" strokeLinejoin="round" filter="url(#shadow-soft)" pointerEvents="none" />
+                      <path d={d} fill="none" stroke={entry.color} strokeWidth={entry.width} strokeLinecap="round" strokeLinejoin="round" filter="url(#shadow-soft)" pointerEvents="none" markerEnd="url(#arrowhead)" style={{ color: entry.color }} />
                     </g>
                   );
                 }
@@ -1031,4 +1200,3 @@ export default function SketchBoard({ open, value, defaultValue, onChange, onCon
     </div>
   );
 }
-

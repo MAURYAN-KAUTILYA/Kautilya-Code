@@ -1,12 +1,18 @@
 # UI Primitives
 
-This folder is reserved for low-level UI building blocks.
+This folder holds the reusable, low-level UI pieces that can be shared across the app.
 
-## Status
+## What Lives Here
 
-- Currently empty
-- Ready for reusable primitives if the design system grows
+- Dock-style controls and other small interactive surfaces
+- Shared visual primitives that stay close to the design system
+- UI-only components that can be reused without pulling in feature logic
+
+## Current Components
+
+- `animated-dock.tsx`
+- `mac-os-dock.tsx`
 
 ## Why It Exists
 
-Keeping a place for base controls makes the frontend easier to extend without scattering small components across feature folders.
+Keeping a dedicated `src/components/ui` folder makes the UI easier to extend without scattering small controls across feature folders. It also matches the structure expected by shadcn-style component libraries, which keeps future additions predictable and easy to find.

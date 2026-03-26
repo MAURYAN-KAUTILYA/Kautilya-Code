@@ -2,6 +2,8 @@ import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-run
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DiffEditor } from "@monaco-editor/react";
+import { BookOpenText, Calculator, KeyRound, Settings2, TimerReset, Users as UsersIcon, } from "lucide-react";
+import MacOSDock from "@/components/ui/mac-os-dock";
 import { useAppTheme } from "@/theme/AppThemeProvider";
 import AIPanel from "./Aipanel";
 import EditorSection from "./editor";
@@ -30,8 +32,8 @@ const IBrain = () => I("M8 6a3 3 0 0 0-3 3v2a3 3 0 0 0 3 3 M16 6a3 3 0 0 1 3 3v2
 const IDatabase = () => I("M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3z M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6 M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6");
 const IFlask = () => I("M10 2v4l-5 9a4 4 0 0 0 3.5 6h7a4 4 0 0 0 3.5-6l-5-9V2 M8 11h8");
 const IFiles = () => I("M4 4h6l2 2h8v14H4z");
-const STARTER_CODE = `// Kautilya Builder ï¿½ Active Session
-// Model: 812+ ï¿½ Section: Chanakya Intelligence ï¿½ Medium: Build
+const STARTER_CODE = `// Kautilya Builder • Active Session
+// Model: 812+ • Section: Chanakya Intelligence • Medium: Build
 
 import { useState, useEffect } from 'react';
 
@@ -135,7 +137,7 @@ function readStoredRuntimeMode() {
 }
 function Terminal({ activeFile, sessionId, onConsoleEntry, }) {
     const [lines, setLines] = useState([
-        { id: 0, type: "info", text: "Kautilya Terminal ï¿½ hybrid runtime console ready" },
+        { id: 0, type: "info", text: "Kautilya Terminal • hybrid runtime console ready" },
         { id: 1, type: "info", text: "Run commands in the project folder, stream logs, and stop active jobs." },
     ]);
     const [input, setInput] = useState("");
@@ -225,7 +227,7 @@ function Terminal({ activeFile, sessionId, onConsoleEntry, }) {
         if (data.type === "done") {
             setActiveCommandId(null);
             setStatus(data.code === 0 ? "idle" : "error");
-            pushLine(data.code === 0 ? "status" : "error", `Exit ${data.code ?? 0} ï¿½ ${data.runtime ?? "runtime"}`);
+            pushLine(data.code === 0 ? "status" : "error", `Exit ${data.code ?? 0} • ${data.runtime ?? "runtime"}`);
             pushConsole(data.code === 0 ? "info" : "warn", `${data.runtime ?? "Runtime"} finished with exit ${data.code ?? 0}.`, "system");
         }
     };
@@ -504,9 +506,9 @@ function ExplorerInputRow({ depth, draft, onChange, onCommit, onCancel, }) {
             padding: "6px 8px",
             paddingLeft: 12 + depth * 12,
             borderRadius: 10,
-            border: "1px solid rgba(174,124,26,0.24)",
-            background: "rgba(174,124,26,0.08)",
-        }, children: [_jsx("span", { style: { color: draft.type === "folder" ? "#AE7C1A" : "#6B7280", display: "flex", flexShrink: 0 }, children: draft.type === "folder" ? _jsx(IFolder, {}) : _jsx(IPlus, {}) }), _jsx("input", { autoFocus: true, value: draft.value, onChange: (event) => onChange(event.target.value), onKeyDown: (event) => {
+            border: "1px solid rgba(var(--accent-rgb), 0.24)",
+            background: "linear-gradient(135deg, rgba(var(--accent-rgb), 0.12), rgba(var(--accent-alt-rgb), 0.08))",
+        }, children: [_jsx("span", { style: { color: draft.type === "folder" ? "var(--accent-strong)" : "var(--builder-muted)", display: "flex", flexShrink: 0 }, children: draft.type === "folder" ? _jsx(IFolder, {}) : _jsx(IPlus, {}) }), _jsx("input", { autoFocus: true, value: draft.value, onChange: (event) => onChange(event.target.value), onKeyDown: (event) => {
                     if (event.key === "Enter") {
                         event.preventDefault();
                         onCommit();
@@ -517,17 +519,17 @@ function ExplorerInputRow({ depth, draft, onChange, onCommit, onCancel, }) {
                     }
                 }, onBlur: onCommit, placeholder: draft.type === "folder" ? "folder-name" : "file-name.tsx", style: {
                     flex: 1,
-                    background: "rgba(4,6,12,0.9)",
-                    border: "1px solid rgba(255,255,255,0.08)",
+                    background: "var(--builder-glass)",
+                    border: "1px solid var(--builder-border)",
                     borderRadius: 8,
-                    color: "#E5E7EB",
+                    color: "var(--text-primary)",
                     padding: "6px 8px",
                     fontSize: 11,
                     outline: "none",
                     fontFamily: "'JetBrains Mono', monospace",
                 } })] }));
 }
-function FileTreeItem({ node, depth, activeFile, selectedPath, draft, openFolders, canRename, canDelete, dragState, onSelectPath, onOpenFile, onToggleFolder, onStartRename, onDelete, onDraftChange, onCommitDraft, onCancelDraft, onDragStart, onDragOverTarget, onDragLeaveTarget, onDropTarget, }) {
+function FileTreeItem({ node, depth, activeFile, selectedPath, draft, openFolders, canRename, canDelete, dragState, onSelectPath, onOpenFile, onToggleFolder, onStartRename, onDelete, onDraftChange, onCommitDraft, onCancelDraft, onDragStart, onDragEnd, onDragOverTarget, onDragLeaveTarget, onDropTarget, }) {
     const indent = depth * 12;
     const isActive = activeFile === node.id;
     const isSelected = selectedPath === node.id;
@@ -538,7 +540,7 @@ function FileTreeItem({ node, depth, activeFile, selectedPath, draft, openFolder
     const dragActive = dragState?.targetId === node.id;
     const dragValid = dragActive && dragState?.valid;
     const dragInvalid = dragActive && dragState && !dragState.valid;
-    return (_jsxs(_Fragment, { children: [isRenaming ? (_jsx(ExplorerInputRow, { depth: depth, draft: draft, onChange: onDraftChange, onCommit: onCommitDraft, onCancel: onCancelDraft })) : (_jsxs("div", { draggable: !!dragState || true, onDragStart: () => onDragStart(node), onDragOver: (event) => {
+    return (_jsxs(_Fragment, { children: [isRenaming ? (_jsx(ExplorerInputRow, { depth: depth, draft: draft, onChange: onDraftChange, onCommit: onCommitDraft, onCancel: onCancelDraft })) : (_jsxs("div", { draggable: true, onDragStart: () => onDragStart(node), onDragEnd: onDragEnd, onDragOver: (event) => {
                     event.preventDefault();
                     onDragOverTarget(node);
                 }, onDragLeave: () => onDragLeaveTarget(node), onDrop: (event) => {
@@ -563,28 +565,28 @@ function FileTreeItem({ node, depth, activeFile, selectedPath, draft, openFolder
                         : dragInvalid
                             ? "rgba(248,113,113,0.14)"
                             : isSelected
-                                ? "rgba(174,124,26,0.12)"
+                                ? "var(--accent-soft)"
                                 : isActive
-                                    ? "rgba(155,34,38,0.1)"
+                                    ? "rgba(var(--accent-rgb), 0.1)"
                                     : "transparent",
                     borderLeft: isSelected
-                        ? "1px solid rgba(174,124,26,0.45)"
+                        ? "1px solid var(--accent-strong)"
                         : isActive
-                            ? "1px solid rgba(155,34,38,0.4)"
+                            ? "1px solid rgba(var(--accent-rgb), 0.42)"
                             : "1px solid transparent",
                     borderTop: dragValid ? "1px solid rgba(134,239,172,0.25)" : "1px solid transparent",
                     borderBottom: dragValid ? "1px solid rgba(134,239,172,0.25)" : "1px solid transparent",
                     transition: "background 0.12s, border-color 0.12s",
                 }, onMouseEnter: (event) => {
                     if (!isSelected && !isActive && !dragActive)
-                        event.currentTarget.style.background = "rgba(155,34,38,0.04)";
+                        event.currentTarget.style.background = "var(--highlight)";
                 }, onMouseLeave: (event) => {
                     if (!isSelected && !isActive && !dragActive)
                         event.currentTarget.style.background = "transparent";
-                }, children: [node.type === "folder" ? (_jsx("span", { style: { color: isSelected ? "#AE7C1A" : "#6B7280", display: "flex", flexShrink: 0 }, children: isOpen ? _jsx(IChevD, {}) : _jsx(IChevR, {}) })) : (_jsx("span", { style: { width: 6, height: 6, borderRadius: "50%", background: dotColor, flexShrink: 0, marginLeft: 4 } })), _jsx("span", { style: { color: node.type === "folder" ? (isSelected ? "#F5DEB3" : "#AE7C1A") : isSelected || isActive ? "#E2E8F0" : "#8A93A5", display: "flex", flexShrink: 0 }, children: node.type === "folder" ? _jsx(IFolder, {}) : _jsx(IOpenFile, {}) }), _jsx("span", { style: {
+                }, children: [node.type === "folder" ? (_jsx("span", { style: { color: isSelected ? "var(--accent-strong)" : "var(--builder-muted)", display: "flex", flexShrink: 0 }, children: isOpen ? _jsx(IChevD, {}) : _jsx(IChevR, {}) })) : (_jsx("span", { style: { width: 6, height: 6, borderRadius: "50%", background: dotColor, flexShrink: 0, marginLeft: 4 } })), _jsx("span", { style: { color: node.type === "folder" ? (isSelected ? "var(--accent-alt)" : "var(--accent-strong)") : isSelected || isActive ? "var(--accent-strong)" : "var(--builder-muted-soft)", display: "flex", flexShrink: 0 }, children: node.type === "folder" ? _jsx(IFolder, {}) : _jsx(IOpenFile, {}) }), _jsx("span", { style: {
                             fontFamily: "'JetBrains Mono', monospace",
                             fontSize: 11.5,
-                            color: node.type === "folder" ? (isSelected ? "#F5DEB3" : "#9CA3AF") : isSelected || isActive ? "#E2E8F0" : "#6B7280",
+                            color: node.type === "folder" ? (isSelected ? "var(--accent-alt)" : "var(--builder-muted-strong)") : isSelected || isActive ? "var(--text-primary)" : "var(--builder-muted)",
                             whiteSpace: "nowrap",
                             overflow: "hidden",
                             textOverflow: "ellipsis",
@@ -592,18 +594,18 @@ function FileTreeItem({ node, depth, activeFile, selectedPath, draft, openFolder
                         }, children: node.name }), isSelected ? (_jsxs("div", { style: { display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }, children: [canRename ? (_jsx("button", { onClick: (event) => {
                                     event.stopPropagation();
                                     onStartRename(node);
-                                }, title: "Rename", style: { background: "transparent", border: "none", color: "#94A3B8", cursor: "pointer", display: "flex", padding: 2 }, children: _jsx(IPencil, {}) })) : null, canDelete ? (_jsx("button", { onClick: (event) => {
+                                }, title: "Rename", style: { background: "transparent", border: "none", color: "var(--builder-muted-strong)", cursor: "pointer", display: "flex", padding: 2 }, children: _jsx(IPencil, {}) })) : null, canDelete ? (_jsx("button", { onClick: (event) => {
                                     event.stopPropagation();
                                     onDelete(node);
-                                }, title: "Delete", style: { background: "transparent", border: "none", color: "#FCA5A5", cursor: "pointer", display: "flex", padding: 2 }, children: _jsx(ITrash, {}) })) : null] })) : null] })), node.type === "folder" && isOpen ? (_jsxs(_Fragment, { children: [draft?.mode === "create" && draft.parentPath === node.id ? (_jsx(ExplorerInputRow, { depth: depth + 1, draft: draft, onChange: onDraftChange, onCommit: onCommitDraft, onCancel: onCancelDraft })) : null, node.children?.map((child) => (_jsx(FileTreeItem, { node: child, depth: depth + 1, activeFile: activeFile, selectedPath: selectedPath, draft: draft, openFolders: openFolders, canRename: canRename, canDelete: canDelete, dragState: dragState, onSelectPath: onSelectPath, onOpenFile: onOpenFile, onToggleFolder: onToggleFolder, onStartRename: onStartRename, onDelete: onDelete, onDraftChange: onDraftChange, onCommitDraft: onCommitDraft, onCancelDraft: onCancelDraft, onDragStart: onDragStart, onDragOverTarget: onDragOverTarget, onDragLeaveTarget: onDragLeaveTarget, onDropTarget: onDropTarget }, child.id)))] })) : null] }));
+                                }, title: "Delete", style: { background: "transparent", border: "none", color: "#FCA5A5", cursor: "pointer", display: "flex", padding: 2 }, children: _jsx(ITrash, {}) })) : null] })) : null] })), node.type === "folder" && isOpen ? (_jsxs(_Fragment, { children: [draft?.mode === "create" && draft.parentPath === node.id ? (_jsx(ExplorerInputRow, { depth: depth + 1, draft: draft, onChange: onDraftChange, onCommit: onCommitDraft, onCancel: onCancelDraft })) : null, node.children?.map((child) => (_jsx(FileTreeItem, { node: child, depth: depth + 1, activeFile: activeFile, selectedPath: selectedPath, draft: draft, openFolders: openFolders, canRename: canRename, canDelete: canDelete, dragState: dragState, onSelectPath: onSelectPath, onOpenFile: onOpenFile, onToggleFolder: onToggleFolder, onStartRename: onStartRename, onDelete: onDelete, onDraftChange: onDraftChange, onCommitDraft: onCommitDraft, onCancelDraft: onCancelDraft, onDragStart: onDragStart, onDragEnd: onDragEnd, onDragOverTarget: onDragOverTarget, onDragLeaveTarget: onDragLeaveTarget, onDropTarget: onDropTarget }, child.id)))] })) : null] }));
 }
-function FileTree({ tree, activeFile, selectedPath, draft, openFolders, canRename, canDelete, dragState, onSelectPath, onOpenFile, onToggleFolder, onStartRename, onDelete, onDraftChange, onCommitDraft, onCancelDraft, onDragStart, onDragOverTarget, onDragLeaveTarget, onDropTarget, onDropRoot, }) {
+function FileTree({ tree, activeFile, selectedPath, draft, openFolders, canRename, canDelete, dragState, onSelectPath, onOpenFile, onToggleFolder, onStartRename, onDelete, onDraftChange, onCommitDraft, onCancelDraft, onDragStart, onDragEnd, onDragOverTarget, onDragLeaveTarget, onDropTarget, onDropRoot, }) {
     return (_jsxs("div", { style: { padding: "8px 0 10px", overflow: "auto", flex: 1 }, onDragOver: (event) => {
             event.preventDefault();
         }, onDrop: (event) => {
             event.preventDefault();
             onDropRoot();
-        }, children: [draft?.mode === "create" && draft.parentPath === "" ? (_jsx(ExplorerInputRow, { depth: 0, draft: draft, onChange: onDraftChange, onCommit: onCommitDraft, onCancel: onCancelDraft })) : null, tree.map((node) => (_jsx(FileTreeItem, { node: node, depth: 0, activeFile: activeFile, selectedPath: selectedPath, draft: draft, openFolders: openFolders, canRename: canRename, canDelete: canDelete, dragState: dragState, onSelectPath: onSelectPath, onOpenFile: onOpenFile, onToggleFolder: onToggleFolder, onStartRename: onStartRename, onDelete: onDelete, onDraftChange: onDraftChange, onCommitDraft: onCommitDraft, onCancelDraft: onCancelDraft, onDragStart: onDragStart, onDragOverTarget: onDragOverTarget, onDragLeaveTarget: onDragLeaveTarget, onDropTarget: onDropTarget }, node.id)))] }));
+        }, children: [draft?.mode === "create" && draft.parentPath === "" ? (_jsx(ExplorerInputRow, { depth: 0, draft: draft, onChange: onDraftChange, onCommit: onCommitDraft, onCancel: onCancelDraft })) : null, tree.map((node) => (_jsx(FileTreeItem, { node: node, depth: 0, activeFile: activeFile, selectedPath: selectedPath, draft: draft, openFolders: openFolders, canRename: canRename, canDelete: canDelete, dragState: dragState, onSelectPath: onSelectPath, onOpenFile: onOpenFile, onToggleFolder: onToggleFolder, onStartRename: onStartRename, onDelete: onDelete, onDraftChange: onDraftChange, onCommitDraft: onCommitDraft, onCancelDraft: onCancelDraft, onDragStart: onDragStart, onDragEnd: onDragEnd, onDragOverTarget: onDragOverTarget, onDragLeaveTarget: onDragLeaveTarget, onDropTarget: onDropTarget }, node.id)))] }));
 }
 function ComingSoonTooltip({ children }) {
     return (_jsxs("div", { className: "coming-soon", style: { position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }, children: [children, _jsx("div", { className: "coming-tooltip", style: {
@@ -712,6 +714,38 @@ const monacoLang = (ext) => ({
 export default function BuilderShell() {
     const navigate = useNavigate();
     const { tokens } = useAppTheme();
+    const multitaskingDockApps = [
+        {
+            id: "docs",
+            name: "Kautilya Docs",
+            icon: _jsx(BookOpenText, { size: 20, strokeWidth: 1.9 }),
+        },
+        {
+            id: "community",
+            name: "Community",
+            icon: _jsx(UsersIcon, { size: 20, strokeWidth: 1.9 }),
+        },
+        {
+            id: "wallet",
+            name: "API Wallet",
+            icon: _jsx(KeyRound, { size: 20, strokeWidth: 1.9 }),
+        },
+        {
+            id: "settings",
+            name: "Dashboard Settings",
+            icon: _jsx(Settings2, { size: 20, strokeWidth: 1.9 }),
+        },
+        {
+            id: "calculator",
+            name: "Calculator",
+            icon: _jsx(Calculator, { size: 20, strokeWidth: 1.9 }),
+        },
+        {
+            id: "timer",
+            name: "Timer",
+            icon: _jsx(TimerReset, { size: 20, strokeWidth: 1.9 }),
+        },
+    ];
     const [sessionId] = useState(() => {
         if (typeof window === "undefined")
             return `session_${Date.now()}`;
@@ -783,6 +817,8 @@ export default function BuilderShell() {
         },
     ]);
     const currentDiff = pendingDiffs[0] ?? null;
+    const consoleEntryIdRef = useRef(1);
+    const sendRequestLockRef = useRef(false);
     const filePickerRef = useRef(null);
     const folderPickerRef = useRef(null);
     const attachmentFilePickerRef = useRef(null);
@@ -809,11 +845,14 @@ export default function BuilderShell() {
         folderInput.setAttribute("directory", "");
     }, []);
     const appendConsoleEntry = (entry) => {
+        const id = consoleEntryIdRef.current;
+        consoleEntryIdRef.current += 1;
+        const timestamp = Date.now();
         setConsoleEntries((prev) => [
             ...prev,
             {
-                id: Date.now() + Math.floor(Math.random() * 1000),
-                timestamp: Date.now(),
+                id,
+                timestamp,
                 ...entry,
             },
         ].slice(-500));
@@ -823,6 +862,10 @@ export default function BuilderShell() {
             window.clearTimeout(dragExpandTimeoutRef.current);
             dragExpandTimeoutRef.current = null;
         }
+    };
+    const clearExplorerDragState = () => {
+        clearDragExpandTimeout();
+        setExplorerDragState(null);
     };
     const rebuildLocalTree = () => {
         setFileTree(buildTreeFromEntries(Object.keys(localFilesRef.current), Array.from(localFoldersRef.current)));
@@ -847,20 +890,32 @@ export default function BuilderShell() {
         localFilesRef.current = {};
         localFoldersRef.current = new Set();
         localRootDirRef.current = null;
+        const folderPaths = new Set();
+        let parent = dirnamePath(DEFAULT_WORKSPACE_FILE);
+        while (parent) {
+            folderPaths.add(parent);
+            parent = dirnamePath(parent);
+        }
+        const folderList = Array.from(folderPaths);
+        setFileTree(buildTreeFromEntries([DEFAULT_WORKSPACE_FILE], folderList));
+        setOpenFolders(new Set(folderList));
     };
     const refreshFileTree = async () => {
         try {
             const res = await fetch("/api/fs/tree");
+            if (!res.ok)
+                throw new Error(`File tree request failed (${res.status})`);
             const data = await res.json();
-            if (Array.isArray(data)) {
-                setProjectWorkspace();
-                setFileTree(data);
-                const roots = data.filter((entry) => entry.type === "folder").map((entry) => entry.id);
-                setOpenFolders(new Set(roots));
-            }
+            if (!Array.isArray(data))
+                throw new Error("Invalid file tree payload");
+            setProjectWorkspace();
+            setFileTree(data);
+            const roots = data.filter((entry) => entry.type === "folder").map((entry) => entry.id);
+            setOpenFolders(new Set(roots));
         }
         catch (err) {
             console.error("Failed to load file tree:", err);
+            setProjectWorkspace();
         }
     };
     const openProjectWorkspace = async () => {
@@ -872,7 +927,7 @@ export default function BuilderShell() {
         setSelectedExplorerPath(DEFAULT_WORKSPACE_FILE);
         setCode(STARTER_CODE);
         setExplorerDraft(null);
-        setExplorerDragState(null);
+        clearExplorerDragState();
         setActiveFileState({ kind: "text" });
         await refreshFileTree();
     };
@@ -891,7 +946,7 @@ export default function BuilderShell() {
         setSelectedExplorerPath("");
         setCode("");
         setExplorerDraft(null);
-        setExplorerDragState(null);
+        clearExplorerDragState();
         setActiveFileState({ kind: "text" });
         setPanelMode("editor");
         setWorkspaceTab("code");
@@ -970,6 +1025,11 @@ export default function BuilderShell() {
             void loadLocalFile();
             return;
         }
+        if (workspaceSource === "project" && activeFile === DEFAULT_WORKSPACE_FILE) {
+            setActiveFileState({ kind: "text" });
+            snapshotFile(DEFAULT_WORKSPACE_FILE, STARTER_CODE);
+            return;
+        }
         fetch(`/api/fs/file?path=${encodeURIComponent(activeFile)}`)
             .then(r => {
             if (!r.ok)
@@ -999,57 +1059,64 @@ export default function BuilderShell() {
     useEffect(() => {
         if (!sessionId)
             return;
-        fetch(`/api/session/keys?sessionId=${encodeURIComponent(sessionId)}`)
-            .then(r => r.json())
-            .then(data => setApiKeyInfo(data.key ?? null))
-            .catch(() => { });
-        fetch(`/api/session/commands?sessionId=${encodeURIComponent(sessionId)}`)
-            .then(r => r.json())
-            .then(data => setPersistentCommands({
-            ...DEFAULT_PERSISTENT_COMMANDS,
-            ...(data.persistentCommands ?? {}),
-        }))
-            .catch(() => { });
-        fetch(`/api/session/sketch?sessionId=${encodeURIComponent(sessionId)}`)
-            .then(r => r.json())
-            .then(data => {
-            const nextSketch = data.sketch;
-            if (nextSketch && Array.isArray(nextSketch.elements)) {
-                setSketchBoard({
-                    ...createEmptySketchDocument(),
-                    ...nextSketch,
-                    elements: nextSketch.elements ?? [],
+        const loadJson = async (path) => {
+            try {
+                const res = await fetch(path);
+                if (!res.ok)
+                    return null;
+                return await res.json();
+            }
+            catch {
+                return null;
+            }
+        };
+        void (async () => {
+            const keyData = await loadJson(`/api/session/keys?sessionId=${encodeURIComponent(sessionId)}`);
+            if (keyData)
+                setApiKeyInfo(keyData.key ?? null);
+            const commandsData = await loadJson(`/api/session/commands?sessionId=${encodeURIComponent(sessionId)}`);
+            if (commandsData) {
+                setPersistentCommands({
+                    ...DEFAULT_PERSISTENT_COMMANDS,
+                    ...(commandsData.persistentCommands ?? {}),
                 });
             }
-        })
-            .catch(() => { })
-            .finally(() => setSketchBoardLoaded(true));
-        fetch(`/api/credits?sessionId=${encodeURIComponent(sessionId)}`)
-            .then(r => r.json())
-            .then(data => setCreditStatus(data.credit ?? null))
-            .catch(() => { });
-        fetch(`/api/checkpoint?sessionId=${encodeURIComponent(sessionId)}`)
-            .then(r => r.json())
-            .then(data => {
-            const cp = data.checkpoint;
-            if (!cp)
-                return;
-            const next = {};
-            (cp.filesCompleted ?? []).forEach((f) => { next[f] = "done"; });
-            if (cp.fileInProgress)
-                next[cp.fileInProgress] = "in_progress";
-            (cp.filePending ?? []).forEach((f) => { if (!next[f])
-                next[f] = "pending"; });
-            if (Object.keys(next).length)
-                setFileStatus(next);
-            if (cp.contextSummary) {
-                setMessages((prev) => [
-                    ...prev,
-                    { id: `msg_${Date.now()}_resume`, role: "system", content: `Resume checkpoint loaded (${cp.filesCompleted?.length ?? 0} files done).`, status: "done" },
-                ]);
+            const sketchData = await loadJson(`/api/session/sketch?sessionId=${encodeURIComponent(sessionId)}`);
+            if (sketchData) {
+                const nextSketch = sketchData.sketch;
+                if (nextSketch && Array.isArray(nextSketch.elements)) {
+                    setSketchBoard({
+                        ...createEmptySketchDocument(),
+                        ...nextSketch,
+                        elements: nextSketch.elements ?? [],
+                    });
+                }
             }
-        })
-            .catch(() => { });
+            setSketchBoardLoaded(true);
+            const creditData = await loadJson(`/api/credits?sessionId=${encodeURIComponent(sessionId)}`);
+            if (creditData)
+                setCreditStatus(creditData.credit ?? null);
+            const checkpointData = await loadJson(`/api/checkpoint?sessionId=${encodeURIComponent(sessionId)}`);
+            if (checkpointData) {
+                const cp = checkpointData.checkpoint;
+                if (!cp)
+                    return;
+                const next = {};
+                (cp.filesCompleted ?? []).forEach((f) => { next[f] = "done"; });
+                if (cp.fileInProgress)
+                    next[cp.fileInProgress] = "in_progress";
+                (cp.filePending ?? []).forEach((f) => { if (!next[f])
+                    next[f] = "pending"; });
+                if (Object.keys(next).length)
+                    setFileStatus(next);
+                if (cp.contextSummary) {
+                    setMessages((prev) => [
+                        ...prev,
+                        { id: `msg_${Date.now()}_resume`, role: "system", content: `Resume checkpoint loaded (${cp.filesCompleted?.length ?? 0} files done).`, status: "done" },
+                    ]);
+                }
+            }
+        })();
     }, [sessionId]);
     useEffect(() => {
         if (!sketchBoardLoaded || !sessionId)
@@ -1261,7 +1328,7 @@ export default function BuilderShell() {
             appendConsoleEntry({ source: "runtime", level: "warn", text: data.stderr });
         if (data.error)
             appendConsoleEntry({ source: "system", level: "error", text: data.error });
-        const output = [data.stdout, data.stderr, data.error ? `Error: ${data.error}` : "", data.code !== undefined ? `Exit ${data.code} ï¿½ ${data.runtime ?? "runtime"}` : ""].filter(Boolean).join("\n");
+        const output = [data.stdout, data.stderr, data.error ? `Error: ${data.error}` : "", data.code !== undefined ? `Exit ${data.code} • ${data.runtime ?? "runtime"}` : ""].filter(Boolean).join("\n");
         return output || "(no output)";
     };
     const handleSetApiKey = async (key, model) => {
@@ -1298,7 +1365,7 @@ export default function BuilderShell() {
             return;
         }
         if (data.type === "decision_done") {
-            addSystemMessage(`Decision: tier ${data.tier} ï¿½ ${data.language ?? "unknown"}`, "done");
+            addSystemMessage(`Decision: tier ${data.tier} • ${data.language ?? "unknown"}`, "done");
             return;
         }
         if (data.type === "king_decision") {
@@ -1550,7 +1617,7 @@ export default function BuilderShell() {
             return;
         }
         if (data.type === "king_override") {
-            addSystemMessage(`King override: ${data.verdict} ï¿½ ${data.reason || ""}`, "done");
+            addSystemMessage(`King override: ${data.verdict} • ${data.reason || ""}`, "done");
             return;
         }
         if (data.type === "warning") {
@@ -1713,60 +1780,62 @@ export default function BuilderShell() {
     };
     const handleSend = async () => {
         let text = input.trim();
-        if ((!text && draftCommands.length === 0) || sending)
+        if ((!text && draftCommands.length === 0) || sending || sendRequestLockRef.current)
             return;
-        const utilityCommands = draftCommands.filter((chip) => chip.type === "utility").map((chip) => chip.name);
-        if (commandResolution.errors.length > 0) {
-            addSystemMessage(commandResolution.errors[0], "error");
-            return;
-        }
-        if (utilityCommands.length > 0 && text) {
-            addSystemMessage("Utility slash commands must be sent without a prompt body.", "error");
-            return;
-        }
-        if (!text) {
-            text = buildImplicitCommandRequest(commandResolution.directives.intent);
-        }
-        const displayText = text || draftCommands.map((chip) => chip.token).join(" ");
-        const attachments = draftAttachments.map(({ id, name, kind, size, mimeType }) => ({ id, name, kind, size, mimeType }));
-        const effectiveParallelAgents = {
-            webResearch: parallelAgents.webResearch || Boolean(commandResolution.directives.parallelAgents?.webResearch),
-            designInspiration: parallelAgents.designInspiration || Boolean(commandResolution.directives.parallelAgents?.designInspiration),
-        };
-        const meta = {
-            variant,
-            section,
-            medium,
-            attachments,
-            sketchNotesCount: sketchNotes.length,
-            parallelAgents: effectiveParallelAgents,
-            commands: draftCommands.map((chip) => chip.token),
-            persistentCommands,
-        };
-        const userId = makeId();
-        const assistantId = makeId();
-        const onlyPersistentToggle = !text && draftCommands.every((chip) => chip.type === "persistent");
-        const isUtilityOnly = !text && utilityCommands.length > 0;
-        if (!text && !onlyPersistentToggle && !isUtilityOnly && commandResolution.directives.intent !== "destroy") {
-            addSystemMessage("Add a request after your slash commands.", "error");
-            return;
-        }
-        appendMessage({ id: userId, role: "user", content: displayText, status: "done", meta });
-        appendMessage({ id: assistantId, role: "assistant", content: "", status: "queued", meta: { variant, section, medium } });
-        setInput("");
-        setDraftAttachments([]);
-        resetDraftCommands();
-        setSending(true);
-        setStatus("Queued...");
-        setFileStatus({});
-        setParallelAgentStates({
-            webResearch: effectiveParallelAgents.webResearch ? "requested" : "idle",
-            designInspiration: effectiveParallelAgents.designInspiration ? "requested" : "idle",
-        });
-        setAgentWorkflows([]);
-        setWorkflowRailOpen(false);
-        setActiveAssistantId(assistantId);
+        sendRequestLockRef.current = true;
+        let assistantId = "";
         try {
+            const utilityCommands = draftCommands.filter((chip) => chip.type === "utility").map((chip) => chip.name);
+            if (commandResolution.errors.length > 0) {
+                addSystemMessage(commandResolution.errors[0], "error");
+                return;
+            }
+            if (utilityCommands.length > 0 && text) {
+                addSystemMessage("Utility slash commands must be sent without a prompt body.", "error");
+                return;
+            }
+            if (!text) {
+                text = buildImplicitCommandRequest(commandResolution.directives.intent);
+            }
+            const displayText = text || draftCommands.map((chip) => chip.token).join(" ");
+            const attachments = draftAttachments.map(({ id, name, kind, size, mimeType }) => ({ id, name, kind, size, mimeType }));
+            const effectiveParallelAgents = {
+                webResearch: parallelAgents.webResearch || Boolean(commandResolution.directives.parallelAgents?.webResearch),
+                designInspiration: parallelAgents.designInspiration || Boolean(commandResolution.directives.parallelAgents?.designInspiration),
+            };
+            const meta = {
+                variant,
+                section,
+                medium,
+                attachments,
+                sketchNotesCount: sketchNotes.length,
+                parallelAgents: effectiveParallelAgents,
+                commands: draftCommands.map((chip) => chip.token),
+                persistentCommands,
+            };
+            const userId = makeId();
+            assistantId = makeId();
+            const onlyPersistentToggle = !text && draftCommands.every((chip) => chip.type === "persistent");
+            const isUtilityOnly = !text && utilityCommands.length > 0;
+            if (!text && !onlyPersistentToggle && !isUtilityOnly && commandResolution.directives.intent !== "destroy") {
+                addSystemMessage("Add a request after your slash commands.", "error");
+                return;
+            }
+            appendMessage({ id: userId, role: "user", content: displayText, status: "done", meta });
+            appendMessage({ id: assistantId, role: "assistant", content: "", status: "queued", meta: { variant, section, medium } });
+            setInput("");
+            setDraftAttachments([]);
+            resetDraftCommands();
+            setSending(true);
+            setStatus("Queued...");
+            setFileStatus({});
+            setParallelAgentStates({
+                webResearch: effectiveParallelAgents.webResearch ? "requested" : "idle",
+                designInspiration: effectiveParallelAgents.designInspiration ? "requested" : "idle",
+            });
+            setAgentWorkflows([]);
+            setWorkflowRailOpen(false);
+            setActiveAssistantId(assistantId);
             if (Object.keys(commandResolution.toggledPersistent).length > 0) {
                 await persistCommands(commandResolution.nextPersistent);
             }
@@ -1824,12 +1893,15 @@ export default function BuilderShell() {
             }
         }
         catch (err) {
-            updateMessage(assistantId, { status: "error", content: err?.message || "Request failed." });
+            if (assistantId) {
+                updateMessage(assistantId, { status: "error", content: err?.message || "Request failed." });
+            }
             setStatus("Error");
             setActiveAssistantId((prev) => (prev === assistantId ? null : prev));
         }
         finally {
             setSending(false);
+            sendRequestLockRef.current = false;
         }
     };
     const handleAgentDecision = async (jobId, decision) => {
@@ -2262,8 +2334,12 @@ export default function BuilderShell() {
     const handleExplorerDragStart = (node) => {
         if (!canMoveExplorerItem)
             return;
+        clearDragExpandTimeout();
         setSelectedExplorerPath(node.id);
         setExplorerDragState({ sourceId: node.id, sourceType: node.type, targetId: null, valid: false });
+    };
+    const handleExplorerDragEnd = () => {
+        clearExplorerDragState();
     };
     const handleExplorerDragOverTarget = (node) => {
         setExplorerDragState((prev) => {
@@ -2287,13 +2363,13 @@ export default function BuilderShell() {
         clearDragExpandTimeout();
         const state = explorerDragState;
         if (!state || !validateDropTarget(state, node)) {
-            setExplorerDragState(null);
+            clearExplorerDragState();
             return;
         }
         const name = state.sourceId.split("/").pop() ?? state.sourceId;
         const nextPath = normalizeEntryPath(`${node.id}/${name}`);
         if (nextPath === state.sourceId) {
-            setExplorerDragState(null);
+            clearExplorerDragState();
             return;
         }
         try {
@@ -2304,7 +2380,7 @@ export default function BuilderShell() {
             addSystemMessage(err?.message || "Unable to move explorer item.", "error");
         }
         finally {
-            setExplorerDragState(null);
+            clearExplorerDragState();
         }
     };
     const handleExplorerDropRoot = async () => {
@@ -2315,7 +2391,7 @@ export default function BuilderShell() {
         const name = state.sourceId.split("/").pop() ?? state.sourceId;
         const nextPath = normalizeEntryPath(name);
         if (!nextPath || nextPath === state.sourceId) {
-            setExplorerDragState(null);
+            clearExplorerDragState();
             return;
         }
         try {
@@ -2326,7 +2402,7 @@ export default function BuilderShell() {
             addSystemMessage(err?.message || "Unable to move explorer item.", "error");
         }
         finally {
-            setExplorerDragState(null);
+            clearExplorerDragState();
         }
     };
     const appendDraftAttachments = (files, kind) => {
@@ -2424,12 +2500,12 @@ export default function BuilderShell() {
                                                     transition: "all 0.15s",
                                                 }, children: _jsx(IMenu, {}) })) : null, _jsx("div", { style: { fontFamily: "'SF Mono','JetBrains Mono',monospace", fontSize: 10, color: "var(--builder-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }, children: activeFile
                                                     ? activeFile.split("/").map((p, i, a) => (_jsxs("span", { children: [_jsx("span", { style: { color: i === a.length - 1 ? "var(--text-primary)" : "var(--builder-muted-soft)" }, children: p }), i < a.length - 1 ? _jsx("span", { style: { color: "var(--text-quaternary)", margin: "0 3px" }, children: "/" }) : null] }, `${p}-${i}`)))
-                                                    : _jsx("span", { style: { color: "var(--builder-muted-soft)" }, children: workspaceLabel }) }), workspaceSource === "local" ? (_jsx("div", { style: { fontFamily: "'SF Mono','JetBrains Mono',monospace", fontSize: 9, color: localReadOnly ? "#d97706" : "var(--accent-strong)", letterSpacing: "0.08em", whiteSpace: "nowrap" }, children: localReadOnly ? "LOCAL READ ONLY" : "LOCAL FOLDER" })) : null] }), _jsxs("div", { style: { display: "flex", alignItems: "center", gap: 8 }, children: [_jsxs("div", { style: { display: "flex", alignItems: "center", padding: 2, borderRadius: 999, border: "1px solid var(--builder-border)", background: "var(--builder-glass)" }, children: [_jsx("button", { onClick: () => setPanelMode("editor"), style: { background: panelMode === "editor" ? "var(--accent-soft)" : "transparent", border: "none", color: panelMode === "editor" ? "var(--accent-strong)" : "var(--builder-muted)", padding: "6px 12px", borderRadius: 999, cursor: "pointer", fontFamily: "'SF Mono','JetBrains Mono',monospace", fontSize: 9, letterSpacing: "0.08em" }, children: "EDITOR" }), _jsx("button", { onClick: () => setPanelMode("preview"), style: { background: panelMode === "preview" ? "var(--accent-soft)" : "transparent", border: "none", color: panelMode === "preview" ? "var(--accent-strong)" : "var(--builder-muted)", padding: "6px 12px", borderRadius: 999, cursor: "pointer", fontFamily: "'SF Mono','JetBrains Mono',monospace", fontSize: 9, letterSpacing: "0.08em" }, children: "PREVIEW" })] }), panelMode === "editor" ? (_jsxs("div", { style: { display: "flex", alignItems: "center", padding: 2, borderRadius: 999, border: "1px solid var(--builder-border)", background: "var(--builder-glass)" }, children: [_jsx("button", { onClick: () => setWorkspaceTab("code"), style: { background: workspaceTab === "code" ? "var(--accent-soft)" : "transparent", border: "none", color: workspaceTab === "code" ? "var(--accent-strong)" : "var(--builder-muted)", padding: "6px 12px", borderRadius: 999, cursor: "pointer", fontFamily: "'SF Mono','JetBrains Mono',monospace", fontSize: 9, letterSpacing: "0.08em" }, children: "CODE" }), _jsx("button", { onClick: () => setWorkspaceTab("terminal"), style: { background: workspaceTab === "terminal" ? "var(--accent-soft)" : "transparent", border: "none", color: workspaceTab === "terminal" ? "var(--accent-strong)" : "var(--builder-muted)", padding: "6px 12px", borderRadius: 999, cursor: "pointer", fontFamily: "'SF Mono','JetBrains Mono',monospace", fontSize: 9, letterSpacing: "0.08em" }, children: "TERMINAL" })] })) : (_jsxs("div", { style: { display: "flex", alignItems: "center", padding: 2, borderRadius: 999, border: "1px solid var(--builder-border)", background: "var(--builder-glass)" }, children: [_jsx("button", { onClick: () => setPreviewTab("preview"), style: { background: previewTab === "preview" ? "var(--accent-soft)" : "transparent", border: "none", color: previewTab === "preview" ? "var(--accent-strong)" : "var(--builder-muted)", padding: "6px 12px", borderRadius: 999, cursor: "pointer", fontFamily: "'SF Mono','JetBrains Mono',monospace", fontSize: 9, letterSpacing: "0.08em" }, children: "PREVIEW" }), _jsx("button", { onClick: () => setPreviewTab("console"), style: { background: previewTab === "console" ? "var(--accent-soft)" : "transparent", border: "none", color: previewTab === "console" ? "var(--accent-strong)" : "var(--builder-muted)", padding: "6px 12px", borderRadius: 999, cursor: "pointer", fontFamily: "'SF Mono','JetBrains Mono',monospace", fontSize: 9, letterSpacing: "0.08em" }, children: "CONSOLE" })] })), _jsxs("button", { onClick: () => { setPanelMode("editor"); setWorkspaceTab("terminal"); }, title: "Open terminal", style: { display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 999, border: "1px solid var(--builder-border)", background: "var(--builder-glass)", color: "var(--builder-muted-strong)", cursor: "pointer", fontFamily: "'SF Mono','JetBrains Mono',monospace", fontSize: 9, letterSpacing: "0.08em", transition: "all 0.15s" }, children: [_jsx(IPlay, {}), " OPEN"] }), _jsx("button", { onClick: downloadFile, title: "Download file", style: { background: "none", border: "none", color: "var(--builder-muted)", cursor: "pointer", display: "flex", padding: 4 }, children: _jsx(IDownload, {}) }), !chatOpen ? (_jsx("button", { onClick: () => setChatOpen(true), title: "Open chat", style: { background: "var(--accent-soft)", border: "1px solid rgba(var(--accent-rgb), 0.24)", color: "var(--accent-strong)", cursor: "pointer", display: "flex", padding: "6px 8px", borderRadius: 10 }, children: _jsx(IBot, {}) })) : null] })] }), panelMode === "editor" ? (_jsx("div", { style: { height: 38, flexShrink: 0, display: "flex", alignItems: "center", background: "var(--builder-glass)", borderBottom: "1px solid var(--builder-border)", overflow: "hidden" }, children: openTabs.map((tab) => {
+                                                    : _jsx("span", { style: { color: "var(--builder-muted-soft)" }, children: workspaceLabel }) }), workspaceSource === "local" ? (_jsx("div", { style: { fontFamily: "'SF Mono','JetBrains Mono',monospace", fontSize: 9, color: localReadOnly ? "var(--accent-alt)" : "var(--accent-strong)", letterSpacing: "0.08em", whiteSpace: "nowrap" }, children: localReadOnly ? "LOCAL READ ONLY" : "LOCAL FOLDER" })) : null] }), _jsxs("div", { style: { display: "flex", alignItems: "center", gap: 8 }, children: [_jsxs("div", { style: { display: "flex", alignItems: "center", padding: 2, borderRadius: 999, border: "1px solid var(--builder-border)", background: "var(--builder-glass)" }, children: [_jsx("button", { onClick: () => setPanelMode("editor"), style: { background: panelMode === "editor" ? "var(--accent-soft)" : "transparent", border: "none", color: panelMode === "editor" ? "var(--accent-strong)" : "var(--builder-muted)", padding: "6px 12px", borderRadius: 999, cursor: "pointer", fontFamily: "'SF Mono','JetBrains Mono',monospace", fontSize: 9, letterSpacing: "0.08em" }, children: "EDITOR" }), _jsx("button", { onClick: () => setPanelMode("preview"), style: { background: panelMode === "preview" ? "var(--accent-soft)" : "transparent", border: "none", color: panelMode === "preview" ? "var(--accent-strong)" : "var(--builder-muted)", padding: "6px 12px", borderRadius: 999, cursor: "pointer", fontFamily: "'SF Mono','JetBrains Mono',monospace", fontSize: 9, letterSpacing: "0.08em" }, children: "PREVIEW" })] }), panelMode === "editor" ? (_jsxs("div", { style: { display: "flex", alignItems: "center", padding: 2, borderRadius: 999, border: "1px solid var(--builder-border)", background: "var(--builder-glass)" }, children: [_jsx("button", { onClick: () => setWorkspaceTab("code"), style: { background: workspaceTab === "code" ? "var(--accent-soft)" : "transparent", border: "none", color: workspaceTab === "code" ? "var(--accent-strong)" : "var(--builder-muted)", padding: "6px 12px", borderRadius: 999, cursor: "pointer", fontFamily: "'SF Mono','JetBrains Mono',monospace", fontSize: 9, letterSpacing: "0.08em" }, children: "CODE" }), _jsx("button", { onClick: () => setWorkspaceTab("terminal"), style: { background: workspaceTab === "terminal" ? "var(--accent-soft)" : "transparent", border: "none", color: workspaceTab === "terminal" ? "var(--accent-strong)" : "var(--builder-muted)", padding: "6px 12px", borderRadius: 999, cursor: "pointer", fontFamily: "'SF Mono','JetBrains Mono',monospace", fontSize: 9, letterSpacing: "0.08em" }, children: "TERMINAL" })] })) : (_jsxs("div", { style: { display: "flex", alignItems: "center", padding: 2, borderRadius: 999, border: "1px solid var(--builder-border)", background: "var(--builder-glass)" }, children: [_jsx("button", { onClick: () => setPreviewTab("preview"), style: { background: previewTab === "preview" ? "var(--accent-soft)" : "transparent", border: "none", color: previewTab === "preview" ? "var(--accent-strong)" : "var(--builder-muted)", padding: "6px 12px", borderRadius: 999, cursor: "pointer", fontFamily: "'SF Mono','JetBrains Mono',monospace", fontSize: 9, letterSpacing: "0.08em" }, children: "PREVIEW" }), _jsx("button", { onClick: () => setPreviewTab("console"), style: { background: previewTab === "console" ? "var(--accent-soft)" : "transparent", border: "none", color: previewTab === "console" ? "var(--accent-strong)" : "var(--builder-muted)", padding: "6px 12px", borderRadius: 999, cursor: "pointer", fontFamily: "'SF Mono','JetBrains Mono',monospace", fontSize: 9, letterSpacing: "0.08em" }, children: "CONSOLE" })] })), _jsxs("button", { onClick: () => { setPanelMode("editor"); setWorkspaceTab("terminal"); }, title: "Open terminal", style: { display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 999, border: "1px solid var(--builder-border)", background: "var(--builder-glass)", color: "var(--builder-muted-strong)", cursor: "pointer", fontFamily: "'SF Mono','JetBrains Mono',monospace", fontSize: 9, letterSpacing: "0.08em", transition: "all 0.15s" }, children: [_jsx(IPlay, {}), " OPEN"] }), _jsx("button", { onClick: downloadFile, title: "Download file", style: { background: "none", border: "none", color: "var(--builder-muted)", cursor: "pointer", display: "flex", padding: 4 }, children: _jsx(IDownload, {}) }), !chatOpen ? (_jsx("button", { onClick: () => setChatOpen(true), title: "Open chat", style: { background: "var(--accent-soft)", border: "1px solid rgba(var(--accent-rgb), 0.24)", color: "var(--accent-strong)", cursor: "pointer", display: "flex", padding: "6px 8px", borderRadius: 10 }, children: _jsx(IBot, {}) })) : null] })] }), panelMode === "editor" ? (_jsx("div", { style: { height: 38, flexShrink: 0, display: "flex", alignItems: "center", background: "var(--builder-glass)", borderBottom: "1px solid var(--builder-border)", overflow: "hidden" }, children: openTabs.map((tab) => {
                                     const ext = fileExt(tab);
                                     const dotC = LANG_COLORS[ext] ?? "#6B7280";
                                     const isAct = tab === activeFile;
                                     return (_jsxs("div", { className: "tab-btn", onClick: () => openFile(tab), style: { display: "flex", alignItems: "center", gap: 6, padding: "0 12px", height: "100%", cursor: "pointer", background: isAct ? "var(--accent-soft)" : "transparent", borderRight: "1px solid var(--builder-border)", borderBottom: isAct ? "1px solid var(--accent-strong)" : "1px solid transparent", minWidth: 0, flexShrink: 0 }, children: [_jsx("span", { style: { width: 5, height: 5, borderRadius: "50%", background: dotC, flexShrink: 0 } }), _jsx("span", { style: { fontFamily: "'SF Mono','JetBrains Mono',monospace", fontSize: 11, color: isAct ? "var(--text-primary)" : "var(--builder-muted)", whiteSpace: "nowrap" }, children: fileName(tab) }), _jsx("span", { className: "tab-close", onClick: (e) => closeTab(tab, e), style: { opacity: 0, color: "var(--builder-muted)", display: "flex", transition: "opacity 0.1s", cursor: "pointer", marginLeft: 2 }, children: _jsx(IClose, {}) })] }, tab));
-                                }) })) : null, _jsxs("div", { style: { flex: 1, minHeight: 0, display: "flex" }, children: [panelMode === "editor" && fileTreeOpen ? (_jsxs("div", { style: { width: 286, flexShrink: 0, background: "var(--builder-glass)", borderRight: "1px solid var(--builder-border)", display: "flex", overflow: "hidden", backdropFilter: "blur(24px) saturate(160%)", WebkitBackdropFilter: "blur(24px) saturate(160%)" }, children: [_jsx("div", { style: { width: 44, borderRight: "1px solid var(--builder-border)", display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 10, gap: 8, background: "var(--builder-sidebar-bg)" }, children: _jsx("button", { title: "Files", style: { width: 30, height: 30, border: "none", background: "var(--accent-soft)", color: "var(--accent-strong)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center" }, children: _jsx(IFiles, {}) }) }), _jsxs("div", { style: { flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }, children: [_jsxs("div", { style: { padding: "12px 14px 10px", borderBottom: "1px solid var(--builder-border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }, children: [_jsxs("div", { style: { minWidth: 0 }, children: [_jsx("div", { style: { fontSize: 10, fontFamily: "'SF Mono','JetBrains Mono',monospace", color: "var(--builder-muted)", letterSpacing: "0.08em" }, children: "EXPLORER" }), _jsx("div", { style: { fontSize: 11, color: "var(--builder-muted-strong)", marginTop: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }, children: workspaceLabel })] }), _jsxs("div", { style: { display: "flex", alignItems: "center", gap: 4 }, children: [_jsx("button", { className: "ghost-icon-btn", onClick: () => startCreateEntry("file"), disabled: !canCreateExplorerItem, title: "New File", children: _jsx(IPlus, {}) }), _jsx("button", { className: "ghost-icon-btn", onClick: () => startCreateEntry("folder"), disabled: !canCreateExplorerItem, title: "New Folder", children: _jsx(IFolderPlus, {}) }), _jsx("button", { className: "ghost-icon-btn", onClick: () => void (workspaceSource === "project" ? refreshFileTree() : refreshLocalWorkspaceFromHandle()), title: "Refresh", children: _jsx(IRefresh, {}) }), _jsx("button", { className: "ghost-icon-btn", onClick: () => setOpenFolders(new Set()), title: "Collapse All", children: _jsx(ICollapse, {}) })] })] }), _jsxs("div", { style: { padding: "8px 12px", borderBottom: "1px solid var(--builder-border)", display: "flex", flexWrap: "wrap", gap: 6 }, children: [_jsx("button", { className: "ghost-btn", onClick: () => void openSystemFile(), children: "Open File" }), _jsx("button", { className: "ghost-btn", onClick: () => void openSystemFolder(), children: "Open Folder" }), workspaceSource === "local" ? _jsx("button", { className: "ghost-btn", onClick: () => void openProjectWorkspace(), children: "Project" }) : null, localReadOnly ? _jsx("span", { style: { fontFamily: "'SF Mono','JetBrains Mono',monospace", fontSize: 9, color: "#d97706", letterSpacing: "0.08em", alignSelf: "center" }, children: "READ ONLY" }) : null] }), _jsx(FileTree, { tree: fileTree, activeFile: activeFile, selectedPath: selectedExplorerPath, draft: explorerDraft, openFolders: openFolders, canRename: canRenameExplorerItem, canDelete: canDeleteExplorerItem, dragState: explorerDragState, onSelectPath: setSelectedExplorerPath, onOpenFile: openFile, onToggleFolder: handleToggleFolder, onStartRename: startRenameEntry, onDelete: deleteExplorerNode, onDraftChange: (value) => setExplorerDraft((prev) => (prev ? { ...prev, value } : prev)), onCommitDraft: () => void commitExplorerDraft(), onCancelDraft: () => setExplorerDraft(null), onDragStart: handleExplorerDragStart, onDragOverTarget: handleExplorerDragOverTarget, onDragLeaveTarget: handleExplorerDragLeaveTarget, onDropTarget: (node) => void handleExplorerDropTarget(node), onDropRoot: () => void handleExplorerDropRoot() })] })] })) : null, _jsx(EditorSection, { activeFile: activeFile, code: code, fileState: activeFileState, openTabsCount: openTabs.length, panelMode: panelMode, workspaceTab: workspaceTab, previewTab: previewTab, previewUrl: previewUrl, terminalPanel: _jsx(Terminal, { activeFile: activeFile, sessionId: sessionId, onConsoleEntry: appendConsoleEntry }), consoleEntries: consoleEntries, onCodeChange: setCode, onPreviewTabChange: setPreviewTab, onPreviewUrlApply: handlePreviewUrlApply, onUseFilePreview: handleUseFilePreview, onClearConsole: handleClearConsole, onPreviewConsoleEvent: appendConsoleEntry }), _jsx("input", { ref: filePickerRef, type: "file", onChange: handlePickedFileChange, style: { display: "none" } }), _jsx("input", { ref: folderPickerRef, type: "file", multiple: true, onChange: handlePickedFolderChange, style: { display: "none" } }), _jsx("input", { ref: attachmentFilePickerRef, type: "file", multiple: true, onChange: handleAttachmentFileChange, style: { display: "none" } }), _jsx("input", { ref: attachmentImagePickerRef, type: "file", accept: "image/*", multiple: true, onChange: handleAttachmentImageChange, style: { display: "none" } })] })] }), workflowRailOpen && agentWorkflows.length > 0 ? (_jsx(AgentWorkflowRail, { workflows: agentWorkflows, onClose: () => setWorkflowRailOpen(false), onDecision: handleAgentDecision })) : null] }), _jsx(SketchBoard, { open: sketchBoardOpen, value: sketchBoard, onChange: setSketchBoard, onNotesChange: () => {
+                                }) })) : null, _jsxs("div", { style: { flex: 1, minHeight: 0, display: "flex" }, children: [panelMode === "editor" && fileTreeOpen ? (_jsxs("div", { style: { width: 286, flexShrink: 0, background: "var(--builder-glass)", borderRight: "1px solid var(--builder-border)", display: "flex", overflow: "hidden", backdropFilter: "blur(24px) saturate(160%)", WebkitBackdropFilter: "blur(24px) saturate(160%)" }, children: [_jsx("div", { style: { width: 44, borderRight: "1px solid var(--builder-border)", display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 10, gap: 8, background: "var(--builder-sidebar-bg)" }, children: _jsx("button", { title: "Files", style: { width: 30, height: 30, border: "none", background: "var(--accent-soft)", color: "var(--accent-strong)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center" }, children: _jsx(IFiles, {}) }) }), _jsxs("div", { style: { flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }, children: [_jsxs("div", { style: { padding: "12px 14px 10px", borderBottom: "1px solid var(--builder-border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }, children: [_jsxs("div", { style: { minWidth: 0 }, children: [_jsx("div", { style: { fontSize: 10, fontFamily: "'SF Mono','JetBrains Mono',monospace", color: "var(--builder-muted)", letterSpacing: "0.08em" }, children: "EXPLORER" }), _jsx("div", { style: { fontSize: 11, color: "var(--builder-muted-strong)", marginTop: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }, children: workspaceLabel })] }), _jsxs("div", { style: { display: "flex", alignItems: "center", gap: 4 }, children: [_jsx("button", { className: "ghost-icon-btn", onClick: () => startCreateEntry("file"), disabled: !canCreateExplorerItem, title: "New File", children: _jsx(IPlus, {}) }), _jsx("button", { className: "ghost-icon-btn", onClick: () => startCreateEntry("folder"), disabled: !canCreateExplorerItem, title: "New Folder", children: _jsx(IFolderPlus, {}) }), _jsx("button", { className: "ghost-icon-btn", onClick: () => void (workspaceSource === "project" ? refreshFileTree() : refreshLocalWorkspaceFromHandle()), title: "Refresh", children: _jsx(IRefresh, {}) }), _jsx("button", { className: "ghost-icon-btn", onClick: () => setOpenFolders(new Set()), title: "Collapse All", children: _jsx(ICollapse, {}) })] })] }), _jsxs("div", { style: { padding: "8px 12px", borderBottom: "1px solid var(--builder-border)", display: "flex", flexWrap: "wrap", gap: 6 }, children: [_jsx("button", { className: "ghost-btn", onClick: () => void openSystemFile(), children: "Open File" }), _jsx("button", { className: "ghost-btn", onClick: () => void openSystemFolder(), children: "Open Folder" }), workspaceSource === "local" ? _jsx("button", { className: "ghost-btn", onClick: () => void openProjectWorkspace(), children: "Project" }) : null, localReadOnly ? _jsx("span", { style: { fontFamily: "'SF Mono','JetBrains Mono',monospace", fontSize: 9, color: "var(--accent-alt)", letterSpacing: "0.08em", alignSelf: "center" }, children: "READ ONLY" }) : null] }), _jsx(FileTree, { tree: fileTree, activeFile: activeFile, selectedPath: selectedExplorerPath, draft: explorerDraft, openFolders: openFolders, canRename: canRenameExplorerItem, canDelete: canDeleteExplorerItem, dragState: explorerDragState, onSelectPath: setSelectedExplorerPath, onOpenFile: openFile, onToggleFolder: handleToggleFolder, onStartRename: startRenameEntry, onDelete: deleteExplorerNode, onDraftChange: (value) => setExplorerDraft((prev) => (prev ? { ...prev, value } : prev)), onCommitDraft: () => void commitExplorerDraft(), onCancelDraft: () => setExplorerDraft(null), onDragStart: handleExplorerDragStart, onDragEnd: handleExplorerDragEnd, onDragOverTarget: handleExplorerDragOverTarget, onDragLeaveTarget: handleExplorerDragLeaveTarget, onDropTarget: (node) => void handleExplorerDropTarget(node), onDropRoot: () => void handleExplorerDropRoot() })] })] })) : null, _jsx(EditorSection, { activeFile: activeFile, code: code, fileState: activeFileState, openTabsCount: openTabs.length, panelMode: panelMode, workspaceTab: workspaceTab, previewTab: previewTab, previewUrl: previewUrl, terminalPanel: _jsx(Terminal, { activeFile: activeFile, sessionId: sessionId, onConsoleEntry: appendConsoleEntry }), consoleEntries: consoleEntries, onCodeChange: setCode, onPreviewTabChange: setPreviewTab, onPreviewUrlApply: handlePreviewUrlApply, onUseFilePreview: handleUseFilePreview, onClearConsole: handleClearConsole, onPreviewConsoleEvent: appendConsoleEntry }), _jsx("input", { ref: filePickerRef, type: "file", onChange: handlePickedFileChange, style: { display: "none" } }), _jsx("input", { ref: folderPickerRef, type: "file", multiple: true, onChange: handlePickedFolderChange, style: { display: "none" } }), _jsx("input", { ref: attachmentFilePickerRef, type: "file", multiple: true, onChange: handleAttachmentFileChange, style: { display: "none" } }), _jsx("input", { ref: attachmentImagePickerRef, type: "file", accept: "image/*", multiple: true, onChange: handleAttachmentImageChange, style: { display: "none" } })] })] }), workflowRailOpen && agentWorkflows.length > 0 ? (_jsx(AgentWorkflowRail, { workflows: agentWorkflows, onClose: () => setWorkflowRailOpen(false), onDecision: handleAgentDecision })) : null] }), _jsx(SketchBoard, { open: sketchBoardOpen, value: sketchBoard, onChange: setSketchBoard, onNotesChange: () => {
                     // sketch note chips are derived from board state in the shell
                 }, onClose: () => setSketchBoardOpen(false) }), currentDiff ? (_jsx("div", { style: { position: "fixed", inset: 0, background: "var(--builder-overlay)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }, children: _jsxs("div", { style: { width: "min(1100px, 96%)", height: "min(80vh, 820px)", background: "var(--bg-elevated)", border: "1px solid var(--builder-border)", borderRadius: 24, display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "var(--shadow-lg)" }, children: [_jsxs("div", { style: { padding: "10px 14px", borderBottom: "1px solid var(--builder-border)", display: "flex", alignItems: "center", justifyContent: "space-between", fontFamily: "'SF Mono','JetBrains Mono',monospace", fontSize: 10, letterSpacing: "0.08em", color: "var(--accent-strong)" }, children: [_jsx("span", { children: "REVIEW AI CHANGES" }), _jsx("span", { style: { color: "var(--builder-muted)" }, children: currentDiff.file })] }), _jsx("div", { style: { flex: 1, minHeight: 0 }, children: _jsx(DiffEditor, { height: "100%", original: currentDiff.before, modified: currentDiff.after, language: monacoLang(fileExt(currentDiff.file)), theme: tokens.diffTheme, options: {
                                     readOnly: true,
@@ -2462,5 +2538,5 @@ export default function BuilderShell() {
                                     borderRadius: 999,
                                     padding: "1px 6px",
                                     background: "rgba(255,255,255,0.08)",
-                                }, children: entry.indicator || entry.chipLabel || entry.name }, entry.name)))] }), _jsxs("div", { style: { display: "flex", alignItems: "center", gap: 14 }, children: [_jsx("span", { children: monacoLang(fileExt(activeFile)).toUpperCase() }), _jsx("span", { children: creditStatus ? `${creditStatus.used} / ${creditStatus.limit} cords` : "cords --" }), _jsx("span", { children: "UTF-8" })] })] })] }));
+                                }, children: entry.indicator || entry.chipLabel || entry.name }, entry.name)))] }), _jsxs("div", { style: { display: "flex", alignItems: "center", gap: 14 }, children: [_jsx("span", { children: monacoLang(fileExt(activeFile)).toUpperCase() }), _jsx("span", { children: creditStatus ? `${creditStatus.used} / ${creditStatus.limit} cords` : "cords --" }), _jsx("span", { children: "UTF-8" })] })] }), _jsx(MacOSDock, { apps: multitaskingDockApps, className: "fixed bottom-5 left-1/2 z-[210] hidden -translate-x-1/2 lg:block", onAppClick: () => { } })] }));
 }

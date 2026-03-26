@@ -22,6 +22,17 @@ const monacoLang = (ext) => ({
     html: "html",
 }[ext] ?? "plaintext");
 const fileExt = (id) => id.split(".").pop() ?? "";
+function withAlpha(hex, alpha) {
+    const normalized = hex.replace("#", "");
+    if (normalized.length !== 6) {
+        return hex;
+    }
+    const bounded = Math.max(0, Math.min(1, alpha));
+    const alphaHex = Math.round(bounded * 255)
+        .toString(16)
+        .padStart(2, "0");
+    return `#${normalized}${alphaHex}`;
+}
 function EmptyState() {
     return (_jsx("div", { style: {
             ...surface,
@@ -55,7 +66,27 @@ function NonTextState({ fileState }) {
 }
 export default function EditorSection({ activeFile, code, fileState, openTabsCount, panelMode, workspaceTab, previewTab, previewUrl, terminalPanel, consoleEntries, onCodeChange, onPreviewTabChange, onPreviewUrlApply, onUseFilePreview, onClearConsole, onPreviewConsoleEvent, }) {
     const { tokens } = useAppTheme();
-    const workspaceBody = workspaceTab === "terminal" ? (terminalPanel) : openTabsCount === 0 ? (_jsx(EmptyState, {})) : fileState.kind !== "text" ? (_jsx(NonTextState, { fileState: fileState })) : (_jsx("div", { style: { ...surface, flex: 1, minHeight: 0, overflow: "hidden" }, children: _jsx(Editor, { height: "100%", language: monacoLang(fileExt(activeFile)), onChange: (value) => onCodeChange(value ?? ""), options: {
+    const monacoThemeName = `kautilya-${tokens.mode}-${tokens.accentId}`;
+    const workspaceBody = workspaceTab === "terminal" ? (terminalPanel) : openTabsCount === 0 ? (_jsx(EmptyState, {})) : fileState.kind !== "text" ? (_jsx(NonTextState, { fileState: fileState })) : (_jsx("div", { style: { ...surface, flex: 1, minHeight: 0, overflow: "hidden" }, children: _jsx(Editor, { beforeMount: (monaco) => {
+                monaco.editor.defineTheme(monacoThemeName, {
+                    base: tokens.monacoTheme,
+                    inherit: true,
+                    rules: [],
+                    colors: {
+                        "editorCursor.foreground": tokens.accentStrong,
+                        "editor.selectionBackground": withAlpha(tokens.accent, tokens.mode === "dark" ? 0.28 : 0.18),
+                        "editor.selectionHighlightBackground": withAlpha(tokens.accentAlt, tokens.mode === "dark" ? 0.22 : 0.12),
+                        "editor.findMatchHighlightBackground": withAlpha(tokens.accentAlt, tokens.mode === "dark" ? 0.18 : 0.12),
+                        "editor.wordHighlightBackground": withAlpha(tokens.accent, tokens.mode === "dark" ? 0.18 : 0.1),
+                        "editor.wordHighlightStrongBackground": withAlpha(tokens.accentStrong, tokens.mode === "dark" ? 0.22 : 0.12),
+                        "editor.lineHighlightBackground": withAlpha(tokens.accent, tokens.mode === "dark" ? 0.08 : 0.05),
+                        "editorLineNumber.activeForeground": tokens.accentStrong,
+                        "editor.lineHighlightBorder": withAlpha(tokens.accentStrong, tokens.mode === "dark" ? 0.28 : 0.18),
+                        "editorBracketMatch.background": withAlpha(tokens.accent, tokens.mode === "dark" ? 0.16 : 0.08),
+                        "editorBracketMatch.border": withAlpha(tokens.accentStrong, tokens.mode === "dark" ? 0.38 : 0.24),
+                    },
+                });
+            }, height: "100%", language: monacoLang(fileExt(activeFile)), onChange: (value) => onCodeChange(value ?? ""), options: {
                 fontSize: 13,
                 fontFamily: "'SF Mono', 'JetBrains Mono', monospace",
                 minimap: { enabled: false },
@@ -70,7 +101,7 @@ export default function EditorSection({ activeFile, code, fileState, openTabsCou
                 cursorBlinking: "smooth",
                 smoothScrolling: true,
                 tabSize: 2,
-            }, theme: tokens.monacoTheme, value: code }) }));
+            }, theme: monacoThemeName, value: code }) }));
     if (panelMode === "preview") {
         return (_jsx("div", { style: { flex: 1, minWidth: 0, display: "flex", padding: 14, background: "transparent" }, children: _jsx(PreviewSection, { activeFile: activeFile, code: code, consoleEntries: consoleEntries, fileState: fileState, onClearConsole: onClearConsole, onConsoleEvent: onPreviewConsoleEvent, onPreviewTabChange: onPreviewTabChange, onPreviewUrlApply: onPreviewUrlApply, onUseFilePreview: onUseFilePreview, previewTab: previewTab, previewUrl: previewUrl }) }));
     }

@@ -63,8 +63,8 @@ export interface AppThemeTokens {
   builderOverlay: string;
   builderStatusBackground: string;
   builderStatusText: string;
-  monacoTheme: "vs-light" | "vs-dark";
-  diffTheme: "vs-light" | "vs-dark";
+  monacoTheme: "vs" | "vs-dark";
+  diffTheme: "vs" | "vs-dark";
   cssVariables: Record<string, string>;
 }
 
@@ -396,8 +396,8 @@ export function buildThemeTokens(preference: ThemePreference): AppThemeTokens {
     builderOverlay,
     builderStatusBackground,
     builderStatusText,
-    monacoTheme: isDark ? "vs-dark" : "vs-light",
-    diffTheme: isDark ? "vs-dark" : "vs-light",
+    monacoTheme: isDark ? "vs-dark" : "vs",
+    diffTheme: isDark ? "vs-dark" : "vs",
     cssVariables,
   };
 }

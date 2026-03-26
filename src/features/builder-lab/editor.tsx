@@ -62,6 +62,18 @@ const monacoLang = (ext: string): string =>
 
 const fileExt = (id: string) => id.split(".").pop() ?? "";
 
+function withAlpha(hex: string, alpha: number) {
+  const normalized = hex.replace("#", "");
+  if (normalized.length !== 6) {
+    return hex;
+  }
+  const bounded = Math.max(0, Math.min(1, alpha));
+  const alphaHex = Math.round(bounded * 255)
+    .toString(16)
+    .padStart(2, "0");
+  return `#${normalized}${alphaHex}`;
+}
+
 function EmptyState() {
   return (
     <div
@@ -148,6 +160,7 @@ export default function EditorSection({
   onPreviewConsoleEvent,
 }: EditorSectionProps) {
   const { tokens } = useAppTheme();
+  const monacoThemeName = `kautilya-${tokens.mode}-${tokens.accentId}`;
 
   const workspaceBody =
     workspaceTab === "terminal" ? (
@@ -159,6 +172,26 @@ export default function EditorSection({
     ) : (
       <div style={{ ...surface, flex: 1, minHeight: 0, overflow: "hidden" }}>
         <Editor
+          beforeMount={(monaco) => {
+            monaco.editor.defineTheme(monacoThemeName, {
+              base: tokens.monacoTheme,
+              inherit: true,
+              rules: [],
+              colors: {
+                "editorCursor.foreground": tokens.accentStrong,
+                "editor.selectionBackground": withAlpha(tokens.accent, tokens.mode === "dark" ? 0.28 : 0.18),
+                "editor.selectionHighlightBackground": withAlpha(tokens.accentAlt, tokens.mode === "dark" ? 0.22 : 0.12),
+                "editor.findMatchHighlightBackground": withAlpha(tokens.accentAlt, tokens.mode === "dark" ? 0.18 : 0.12),
+                "editor.wordHighlightBackground": withAlpha(tokens.accent, tokens.mode === "dark" ? 0.18 : 0.1),
+                "editor.wordHighlightStrongBackground": withAlpha(tokens.accentStrong, tokens.mode === "dark" ? 0.22 : 0.12),
+                "editor.lineHighlightBackground": withAlpha(tokens.accent, tokens.mode === "dark" ? 0.08 : 0.05),
+                "editorLineNumber.activeForeground": tokens.accentStrong,
+                "editor.lineHighlightBorder": withAlpha(tokens.accentStrong, tokens.mode === "dark" ? 0.28 : 0.18),
+                "editorBracketMatch.background": withAlpha(tokens.accent, tokens.mode === "dark" ? 0.16 : 0.08),
+                "editorBracketMatch.border": withAlpha(tokens.accentStrong, tokens.mode === "dark" ? 0.38 : 0.24),
+              },
+            });
+          }}
           height="100%"
           language={monacoLang(fileExt(activeFile))}
           onChange={(value) => onCodeChange(value ?? "")}
@@ -178,7 +211,7 @@ export default function EditorSection({
             smoothScrolling: true,
             tabSize: 2,
           }}
-          theme={tokens.monacoTheme}
+          theme={monacoThemeName}
           value={code}
         />
       </div>

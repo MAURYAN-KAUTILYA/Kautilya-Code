@@ -282,8 +282,8 @@ export function buildThemeTokens(preference) {
         builderOverlay,
         builderStatusBackground,
         builderStatusText,
-        monacoTheme: isDark ? "vs-dark" : "vs-light",
-        diffTheme: isDark ? "vs-dark" : "vs-light",
+        monacoTheme: isDark ? "vs-dark" : "vs",
+        diffTheme: isDark ? "vs-dark" : "vs",
         cssVariables,
     };
 }
