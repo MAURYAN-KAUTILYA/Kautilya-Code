@@ -50,7 +50,7 @@ Unlike systems that only aim to be helpful, Kautilya Code is designed around res
 
 ## Looking For Teammates
 
-We are actively looking for people who want to help shape the project.
+I am actively looking for people who want to help shape the project.
 
 | Role | What You'd Help With |
 | --- | --- |
