@@ -68,6 +68,7 @@ We work best with people who:
 - `npm run lint` - run lint checks
 - `npm run preview` - preview the built app locally
 
+
 ## Why This Repo Feels Different
 
 Kautilya keeps the request, the source, the runtime, and the review loop visible together. That makes it a strong place for teammates who care about building something polished, useful, and a little unforgettable.
