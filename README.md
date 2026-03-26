@@ -23,7 +23,7 @@ Kautilya Code is built for builders who want more than autocomplete and more tha
 
 - Kautilya Docs - a dedicated planning engine for voice-to-text dumps and structured strategy
 - API Wallet - bring your own keys with flexibility and security
-- The Court - a shared space for prompts, templates, and collaborative building
+- The Community - a shared space for prompts, templates, and collaborative building
 
 ### III. The Engine Of Reality
 
@@ -50,7 +50,7 @@ Unlike systems that only aim to be helpful, Kautilya Code is designed around res
 
 ## Looking For Teammates
 
-We are actively looking for people who want to help shape the project.
+I am actively looking for people who want to help shape the project.
 
 | Role | What You'd Help With |
 | --- | --- |
