@@ -1,26 +1,53 @@
-# Kautilya Code
 
-A calm, premium AI builder workspace where prompt, files, preview, runtime, review, and memory stay in one frame.
+---
 
-## What Stands Out
+## 🤝 Looking for Contributors
 
-- Apple-style frontend surfaces for intro, login, dashboard, and the builder lab
-- Variant-aware backend orchestration with model selection, memory, and tribunal-style review
-- Slash commands, session checkpoints, sketch notes, and approval-gated diffs
-- Live editor, preview, terminal, and console feedback in a single working loop
+We are building something ambitious and are looking for serious contributors.
 
-## Project Map
+### Open Roles:
+- 🎨 Frontend (React / UI/UX)
+- ⚙️ Backend (Node / APIs)
+- 🧠 AI Integration (optional)
 
-- [src](./src/README.md) - frontend app, routed surfaces, theme system, and shared UI building blocks
-- [backened](./backened/README.md) - backend entry point and orchestration hub
-- [KAUTILYA LAB](./backened/KAUTILYA%20LAB/README.md) - server, pipeline, memory, knowledge, and execution layers
+---
 
-## Local Run
+## 📌 Requirements
 
-- `npm run dev` - start the frontend
-- `npm run dev:server` - start the backend server
-- `npm run dev:all` - run the full local stack together
+- Must have built at least 1 project  
+- Should understand basics of development  
+- Serious and consistent (no ghosting)  
 
-## Why The Repo Feels Different
+---
 
-Kautilya does not hide the work behind a generic assistant shell. It keeps the request, the source, the runtime, and the review step visible together so the product feels deliberate instead of noisy.
+## 🚀 How to Join
+
+1. Check the issues tab  
+2. Pick a task or suggest one  
+3. Open a PR or DM  
+
+Or reach out with:
+- Your GitHub  
+- Your role (frontend/backend/AI)  
+
+---
+
+## ⚡ Why join?
+
+- Work on a **real product-level idea**
+- Learn AI + full-stack development
+- Build something unique (not a clone project)
+- Early contributor advantage 🚀
+
+---
+
+## 🧠 Philosophy
+
+Inspired by Chanakya:
+> Strategy first, execution next.
+
+---
+
+## ⭐ Support
+
+If you like the idea, consider starring the repo.
