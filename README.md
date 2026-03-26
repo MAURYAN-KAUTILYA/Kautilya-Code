@@ -81,6 +81,12 @@ We are actively looking for people who want to help shape the project.
 - `npm run dev:server` - start the backend server
 - `npm run dev:all` - run the full local stack together
 
+## Scripts
+
+- `npm run build` - compile the frontend for production
+- `npm run lint` - run lint checks
+- `npm run preview` - preview the built app locally
+
 ## Why This Repo Feels Different
 
 Kautilya keeps the request, the source, the runtime, and the review loop visible together. It is built for teammates who want to make something polished, useful, and hard to ignore.
