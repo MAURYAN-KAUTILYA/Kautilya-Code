@@ -1,73 +1,26 @@
-# React + TypeScript + Vite
+# Kautilya Code
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A calm, premium AI builder workspace where prompt, files, preview, runtime, review, and memory stay in one frame.
 
-Currently, two official plugins are available:
+## What Stands Out
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Apple-style frontend surfaces for intro, login, dashboard, and the builder lab
+- Variant-aware backend orchestration with model selection, memory, and tribunal-style review
+- Slash commands, session checkpoints, sketch notes, and approval-gated diffs
+- Live editor, preview, terminal, and console feedback in a single working loop
 
-## React Compiler
+## Project Map
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- [src](./src/README.md) - frontend app, routed surfaces, theme system, and shared UI building blocks
+- [backened](./backened/README.md) - backend entry point and orchestration hub
+- [KAUTILYA LAB](./backened/KAUTILYA%20LAB/README.md) - server, pipeline, memory, knowledge, and execution layers
 
-## Expanding the ESLint configuration
+## Local Run
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- `npm run dev` - start the frontend
+- `npm run dev:server` - start the backend server
+- `npm run dev:all` - run the full local stack together
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Why The Repo Feels Different
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Kautilya does not hide the work behind a generic assistant shell. It keeps the request, the source, the runtime, and the review step visible together so the product feels deliberate instead of noisy.
