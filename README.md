@@ -1,33 +1,59 @@
 # Kautilya Code
 
-Kautilya Code is a premium AI builder workspace for people who want the request, the source, the preview, and the review step visible at the same time.
+We’re building Kautilya Code, a premium AI builder workspace where prompt, source, preview, runtime, and review all stay in one flow.
 
-It feels less like a chatbot wrapper and more like a disciplined product studio.
+Right now, we’re looking for teammates who want to help shape the product, the experience, and the backend engine behind it.
 
-## Why It Stands Out
+## What We’re Building
 
-| Area | What You Get |
+Kautilya is not just another AI wrapper. It is a disciplined workspace for building, checking, and shipping ideas with clarity.
+
+## Open Teammate Roles
+
+| Role | What You’d Help With |
 | --- | --- |
-| Frontend | Apple-inspired intro, login, dashboard, and builder surfaces |
-| Builder Lab | Code editor, preview pane, terminal, diff review, sketch board, and console in one place |
-| AI Flow | Slash commands, model variants, specialist agents, and approval-gated output |
-| Backend | Variant-aware orchestration, memory, runtime control, checkpointing, and file-system tools |
-| Experience | Protected routes, session persistence, and a calmer visual language across the app |
+| Frontend | React UI, polished pages, design consistency, and builder experience |
+| Backend | Node APIs, orchestration, runtime, memory, and file workflows |
+| AI / Prompting | Model routing, command flows, prompt quality, and agent behavior |
+| UI / UX | Cleaner layouts, visual polish, motion, and product storytelling |
+| Testing / QA | Catching edge cases, regressions, and product flow issues |
+| Docs / Community | Better onboarding, README polish, and contributor support |
 
-## Product Highlights
+## What Makes This Worth Joining
 
-- One workspace for prompt, files, preview, runtime, and review
-- Route-aware frontend with polished intro, login, dashboard, and builder experiences
-- Command-driven workflow with persistent directives and session memory
-- Variant-aware backend that routes requests through the right reasoning path
-- Sketch notes and checkpoints that keep the work connected across sessions
-- Review-first execution so changes stay visible before they land
+- Real product, not a throwaway demo
+- Frontend and backend already have strong structure
+- Builder lab, dashboard, auth, and routing are already in place
+- AI workflow includes slash commands, memory, and approval steps
+- There is room to help shape the voice, visuals, and system behavior
 
-## What Lives Where
+## The Stack
+
+- Frontend: React, TypeScript, Vite, Tailwind, Framer Motion
+- Backend: Node.js, Express, model orchestration, memory, runtime, and file tools
+- Auth / data: Supabase
+
+## Project Map
 
 - [src](./src/README.md) - frontend app, routed surfaces, theme system, and shared UI building blocks
 - [backened](./backened/README.md) - backend entry point and orchestration hub
 - [KAUTILYA LAB](./backened/KAUTILYA%20LAB/README.md) - server, pipeline, memory, knowledge, and execution layers
+
+## How To Join
+
+1. Open an issue or message with the role you want to take
+2. Share a small sample of your work or a related project
+3. Pick one area you can improve first
+4. Keep communication clear and consistent
+
+## Good Fit
+
+We work best with people who:
+
+- Build with care
+- Communicate clearly
+- Follow through on tasks
+- Like product thinking, not just code
 
 ## Quick Start
 
@@ -42,13 +68,6 @@ It feels less like a chatbot wrapper and more like a disciplined product studio.
 - `npm run lint` - run lint checks
 - `npm run preview` - preview the built app locally
 
-## Environment
+## Why This Repo Feels Different
 
-The app expects Supabase and backend provider keys to be configured in `.env`.
-
-- Frontend auth and client access use the Supabase variables defined by the app
-- Backend execution, memory, and model routing depend on the server-side keys described in the backend docs
-
-## Why The Repo Feels Different
-
-Kautilya does not hide the work behind a generic assistant shell. It keeps the task, the source, the runtime, and the review loop visible together so the product feels intentional instead of noisy.
+Kautilya keeps the request, the source, the runtime, and the review loop visible together. That makes it a strong place for teammates who care about building something polished, useful, and a little unforgettable.
