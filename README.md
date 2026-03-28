@@ -89,29 +89,29 @@ I am actively looking for people who want to help shape the project.
 
 ## Preview
 
-Below is a simple app preview gallery. Add your screenshots to `assets/preview/` using the names `preview-1.png` through `preview-4.png` or replace the paths with external URLs to host the images elsewhere.
+Below is a simple app preview gallery using the image URLs you provided. If you'd rather store screenshots in the repo, place them under `assets/preview/` and replace the image URLs with local paths.
 
-The gallery is formatted as a 2x2 grid; adjust the widths as needed.
+The gallery is formatted as a 2x2 grid; adjust widths if you prefer different sizing.
 
 <div align="center">
 <table>
   <tr>
     <td align="center">
-      <img src="assets/preview/preview-1.png" alt="Kautilya preview 1" width="360" />
+      <img src="https://i.postimg.cc/qvFHGfG3/kautilya-code.png" alt="Kautilya preview 1" width="360" />
       <p><em>Preview 1 — onboarding / tier cards</em></p>
     </td>
     <td align="center">
-      <img src="assets/preview/preview-2.png" alt="Kautilya preview 2" width="360" />
+      <img src="https://i.postimg.cc/Y0PzsxDb/kautilya-code-2.png" alt="Kautilya preview 2" width="360" />
       <p><em>Preview 2 — slash commands panel</em></p>
     </td>
   </tr>
   <tr>
     <td align="center">
-      <img src="assets/preview/preview-3.png" alt="Kautilya preview 3" width="360" />
+      <img src="https://i.postimg.cc/R0CGqqfx/kautilya-code-3.png" alt="Kautilya preview 3" width="360" />
       <p><em>Preview 3 — builder workspace</em></p>
     </td>
     <td align="center">
-      <img src="assets/preview/preview-4.png" alt="Kautilya preview 4" width="360" />
+      <img src="https://i.postimg.cc/nLLYpg8w/kautilya-code-4.png" alt="Kautilya preview 4" width="360" />
       <p><em>Preview 4 — dashboard</em></p>
     </td>
   </tr>
