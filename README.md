@@ -98,21 +98,21 @@ The gallery is formatted as a 2x2 grid; adjust widths if you prefer different si
   <tr>
     <td align="center">
       <img src="https://i.postimg.cc/qvFHGfG3/kautilya-code.png" alt="Kautilya preview 1" width="360" />
-      <p><em>Preview 1 — onboarding / tier cards</em></p>
+      <p><em>Preview 1 — dashboard </em></p>
     </td>
     <td align="center">
       <img src="https://i.postimg.cc/Y0PzsxDb/kautilya-code-2.png" alt="Kautilya preview 2" width="360" />
-      <p><em>Preview 2 — slash commands panel</em></p>
+      <p><em>Preview 2 —builder workspace</em></p>
     </td>
   </tr>
   <tr>
     <td align="center">
       <img src="https://i.postimg.cc/R0CGqqfx/kautilya-code-3.png" alt="Kautilya preview 3" width="360" />
-      <p><em>Preview 3 — builder workspace</em></p>
+      <p><em>Preview 3 — '/' comands </em></p>
     </td>
     <td align="center">
       <img src="https://i.postimg.cc/nLLYpg8w/kautilya-code-4.png" alt="Kautilya preview 4" width="360" />
-      <p><em>Preview 4 — dashboard</em></p>
+      <p><em>Preview 4 — models/tier </em></p>
     </td>
   </tr>
 </table>
