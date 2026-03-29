@@ -1,9 +1,9 @@
-node_modules
-backend/node_modules
-dist/
-.env
-supabase
+backend/node_modules/
+supabase/
 supabase/config.toml
 .env
 node_modules/
 dist/
+.uv-cache/
+.idea/
+.trae/

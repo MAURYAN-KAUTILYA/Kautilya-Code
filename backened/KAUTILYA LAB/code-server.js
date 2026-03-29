@@ -38,6 +38,12 @@ import { saveCheckpoint, loadCheckpoint, clearCheckpoint } from './infra/checkpo
 import { appendAudit, loadAudits } from './infra/audit.js';
 import { runRuntime, runRuntimeStream, stopRuntimeCommand } from './infra/runtime.js';
 import { flattenFileTree, selectRelevantFiles, buildImportGraph, expandWithDependencies } from './infra/relevance.js';
+import { registerIndicaRoutes } from './infra/indica-routes.js';
+import { createLspClient } from './infra/lsp-client.js';
+import { createRepoIndex } from './infra/repo-index.js';
+import { createToolRegistry } from './infra/tool-registry.js';
+import { writeUpstashJson, deleteUpstashKey } from './infra/upstash-state.js';
+import { createVerificationService } from './infra/verification.js';
 import {
   getSession,
   addMessage,
@@ -53,6 +59,8 @@ import {
   getLastAssistantArtifact,
   getSessionSketch,
   setSessionSketch,
+  getSessionProfile,
+  setSessionProfile,
 } from './infra/session.js';
 import { detectProvider, defaultModelForProvider, capabilityTierForModel, callProvider } from './infra/providers.js';
 import {
@@ -72,6 +80,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Project root is 2 levels up from this file:
 // backened/KAUTILYA LAB/code-server.js -> backened -> project root
 const PROJECT_ROOT = path.resolve(__dirname, '../..');
+const CODE_SERVER_PORT = Number(process.env.CODE_SERVER_PORT || process.env.PORT) || 3002;
+const OPENROUTER_REFERER = process.env.OPENROUTER_REFERER || `http://localhost:${CODE_SERVER_PORT}`;
 const MAX_FILES_TO_TOUCH = 8;
 const IMAGE_EXTENSIONS = new Set([
   '.png',
@@ -86,8 +96,9 @@ const IMAGE_EXTENSIONS = new Set([
 ]);
 
 function resolveWithinRoot(relPath) {
-  const fullPath = path.resolve(PROJECT_ROOT, relPath);
-  if (!fullPath.startsWith(PROJECT_ROOT)) return null;
+  const fullPath = path.resolve(PROJECT_ROOT, String(relPath || ''));
+  const relative = path.relative(PROJECT_ROOT, fullPath);
+  if (relative.startsWith('..') || path.isAbsolute(relative)) return null;
   return fullPath;
 }
 
@@ -148,11 +159,11 @@ function isComplexRequest(message = '') {
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
+registerIndicaRoutes(app);
 
 // ── STARTUP CHECKS ─────────────────────────────────────────────────────────────
 if (!process.env.OPENROUTER_API_KEY) {
-  console.error('\n  FATAL: OPENROUTER_API_KEY is not set\n');
-  process.exit(1);
+  console.warn('\n  WARNING: OPENROUTER_API_KEY is not set — platform orchestration is disabled until a session BYOK key is provided.\n');
 }
 if (!process.env.TAVILY_API_KEY) {
   console.warn('  WARNING: TAVILY_API_KEY not set — web search disabled on hybrid variants');
@@ -286,6 +297,140 @@ function loadKnowledge() {
 
 const KNOWLEDGE = loadKnowledge();
 
+function buildWorkspaceContext(request = {}) {
+  const context = request.workspaceContext || {};
+  const activeFile = String(context.activeFile || request.activeFile || '').trim();
+  const openTabs = Array.isArray(context.openTabs)
+    ? context.openTabs.map((entry) => String(entry || '').trim()).filter(Boolean)
+    : activeFile
+      ? [activeFile]
+      : [];
+  return {
+    activeFile,
+    openTabs,
+    selection: context.selection || null,
+    diagnostics: Array.isArray(context.diagnostics) ? context.diagnostics : [],
+    profile: context.profile || null,
+    openFiles: Array.isArray(context.openFiles) ? context.openFiles : [],
+  };
+}
+
+function buildToolPermissionGrant(overrides = {}) {
+  return {
+    read: true,
+    write: false,
+    exec: false,
+    riskyExec: false,
+    source: 'backend',
+    ...overrides,
+  };
+}
+
+function inferSessionProfile(message = '', workspaceContext = {}, previousProfile = null) {
+  const normalized = String(message || '').toLowerCase();
+  const activeFile = String(workspaceContext?.activeFile || '').toLowerCase();
+  const openTabs = Array.isArray(workspaceContext?.openTabs) ? workspaceContext.openTabs.map((entry) => String(entry || '').toLowerCase()) : [];
+  const joinedPaths = [activeFile, ...openTabs].join(' ');
+  const prior = previousProfile || {};
+
+  let domainBias = prior.domainBias || 'general';
+  if (/\b(ui|ux|css|tailwind|layout|component|react|tsx|figma|frontend)\b/.test(normalized) || /\.(tsx|jsx|css|html)\b/.test(joinedPaths)) {
+    domainBias = 'frontend';
+  } else if (/\b(api|backend|server|express|database|auth|redis|route|schema)\b/.test(normalized) || /\b(backened|infra|server\.js|code-server\.js)\b/.test(joinedPaths)) {
+    domainBias = 'backend';
+  }
+
+  let toneFormality = prior.toneFormality || 'balanced';
+  if (normalized.includes('please') || normalized.includes('explain') || normalized.includes('why')) {
+    toneFormality = 'supportive';
+  } else if (normalized.length < 80 || /\bjust do|fix it|only code|minimal\b/.test(normalized)) {
+    toneFormality = 'direct';
+  }
+
+  let explanationDepth = prior.explanationDepth || 'balanced';
+  if (/\bdeep|detailed|explain|teach|why\b/.test(normalized)) {
+    explanationDepth = 'detailed';
+  } else if (/\bshort|minimal|concise|just code\b/.test(normalized)) {
+    explanationDepth = 'minimal';
+  }
+
+  let autonomyPreference = prior.autonomyPreference || 'balanced';
+  if (/\bdo it|just do|implement|fix\b/.test(normalized)) {
+    autonomyPreference = 'high';
+  } else if (/\bplan|discuss|brainstorm\b/.test(normalized)) {
+    autonomyPreference = 'guided';
+  }
+
+  return {
+    domainBias,
+    toneFormality,
+    explanationDepth,
+    autonomyPreference,
+  };
+}
+
+function buildProfileContextBlock(profile) {
+  if (!profile) return '';
+  return [
+    'USER_PROFILE:',
+    `- domain_bias: ${profile.domainBias || 'general'}`,
+    `- tone_formality: ${profile.toneFormality || 'balanced'}`,
+    `- explanation_depth: ${profile.explanationDepth || 'balanced'}`,
+    `- autonomy_preference: ${profile.autonomyPreference || 'balanced'}`,
+  ].join('\n');
+}
+
+const REPO_QUERY_STOP_WORDS = new Set([
+  'the', 'and', 'for', 'with', 'this', 'that', 'from', 'into', 'after', 'before',
+  'just', 'make', 'need', 'want', 'have', 'does', 'will', 'would', 'could', 'should',
+  'more', 'less', 'like', 'work', 'working', 'backend', 'frontend', 'project',
+]);
+
+function extractRepoQueryTerms(message, limit = 5) {
+  return Array.from(
+    new Set(
+      String(message || '')
+        .toLowerCase()
+        .replace(/[^\w./-]+/g, ' ')
+        .split(/\s+/)
+        .filter((term) => term.length >= 3 && !REPO_QUERY_STOP_WORDS.has(term)),
+    ),
+  ).slice(0, limit);
+}
+
+async function suggestIndexedFiles({ message, workspaceContext = {}, profile = null, limit = 6 }) {
+  const terms = extractRepoQueryTerms(message, 5);
+  if (!terms.length) return [];
+
+  const context = {
+    activeFile: workspaceContext.activeFile || '',
+    openTabs: workspaceContext.openTabs || [],
+    profile,
+  };
+
+  let textHits = [];
+  let symbolHits = [];
+  try {
+    [textHits, symbolHits] = await Promise.all([
+      Promise.all(terms.map((term) => repoIndex.searchText(term, context, 12))),
+      Promise.all(terms.map((term) => repoIndex.findSymbol(term, context, 12))),
+    ]);
+  } catch {
+    return [];
+  }
+
+  const scoreByPath = new Map();
+  for (const hit of [...textHits.flat(), ...symbolHits.flat()]) {
+    if (!hit?.path) continue;
+    scoreByPath.set(hit.path, (scoreByPath.get(hit.path) || 0) + Number(hit.score || 1));
+  }
+
+  return Array.from(scoreByPath.entries())
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, limit)
+    .map(([file]) => file);
+}
+
 // ── SSE HELPERS ────────────────────────────────────────────────────────────────
 function sseHeaders(res) {
   res.setHeader('Content-Type', 'text/event-stream');
@@ -303,7 +448,7 @@ async function callOpenRouter(model, messages, system) {
     headers: {
       'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
       'Content-Type': 'application/json',
-      'HTTP-Referer': 'http://localhost:3002',
+      'HTTP-Referer': OPENROUTER_REFERER,
       'X-Title': 'Kautilya-Code',
     },
     body: JSON.stringify({
@@ -317,6 +462,78 @@ async function callOpenRouter(model, messages, system) {
 
 // ── MAIN CODE ROUTE ────────────────────────────────────────────────────────────
 const jobs = new Map();
+const taskSnapshots = new Map();
+
+function compactTaskSnapshot(task) {
+  if (!task) return null;
+  const updatedAt = task.updatedAt || new Date().toISOString();
+  return {
+    id: task.id,
+    kind: task.kind || 'job',
+    status: task.status || 'idle',
+    label: task.label || '',
+    stage: Number.isFinite(Number(task.stage)) ? Number(task.stage) : 0,
+    error: task.error || null,
+    updatedAt,
+  };
+}
+
+async function storeTaskSnapshot(task) {
+  const snapshot = compactTaskSnapshot(task);
+  if (!snapshot?.id) return snapshot;
+  taskSnapshots.set(snapshot.id, snapshot);
+  await writeUpstashJson(`kautilya:task:${snapshot.id}`, snapshot, 60 * 60 * 4);
+  return snapshot;
+}
+
+async function removeTaskSnapshot(taskId) {
+  if (!taskId) return;
+  taskSnapshots.delete(taskId);
+  await deleteUpstashKey(`kautilya:task:${taskId}`);
+}
+
+function getTaskSnapshot() {
+  const jobDerived = Array.from(jobs.values())
+    .map((job) => compactTaskSnapshot(job))
+    .filter(Boolean);
+  const stored = Array.from(taskSnapshots.values());
+  const merged = new Map();
+  for (const task of [...stored, ...jobDerived]) {
+    merged.set(task.id, task);
+  }
+  return Array.from(merged.values()).sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+}
+
+const lspClient = createLspClient({
+  projectRoot: PROJECT_ROOT,
+  resolveWithinRoot,
+});
+
+const repoIndex = createRepoIndex({
+  projectRoot: PROJECT_ROOT,
+  resolveWithinRoot,
+  lspClient,
+});
+
+const verificationService = createVerificationService({
+  projectRoot: PROJECT_ROOT,
+});
+
+const toolRegistry = createToolRegistry({
+  projectRoot: PROJECT_ROOT,
+  resolveWithinRoot,
+  getFileTree,
+  flattenFileTree,
+  atomicWrite,
+  allowLocalRuntime,
+  resolveRuntimeCwd,
+  isImageFile,
+  isBinaryBuffer,
+  getTaskSnapshot,
+  lspClient,
+  repoIndex,
+  verificationService,
+});
 
 async function summarizeSessionIfNeeded(sessionId, variant) {
   if (!sessionId) return;
@@ -368,6 +585,10 @@ function buildCommandAwareMessage(message, directives, context = {}) {
   const directiveBlock = buildCommandDirectiveBlock(directives, 'implementer');
   const intentPrefix = buildIntentPromptPrefix(directives, context);
   return `${directiveBlock}\n\n${intentPrefix}${message}`.trim();
+}
+
+function hasPlatformModelAccess() {
+  return Boolean(process.env.OPENROUTER_API_KEY);
 }
 
 function normalizeSketchNotes(entries) {
@@ -506,7 +727,7 @@ async function runRequestedAgents(agentRequests, send) {
 
 function pauseForAgentApproval({ send, state, request }) {
   const jobId = `job_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-  jobs.set(jobId, {
+  const job = {
     id: jobId,
     kind: 'agent_permission',
     status: 'awaiting_agent_permission',
@@ -515,7 +736,9 @@ function pauseForAgentApproval({ send, state, request }) {
     result: null,
     error: null,
     state,
-  });
+  };
+  jobs.set(jobId, job);
+  void storeTaskSnapshot(job);
   send({
     type: 'agent_permission_required',
     jobId,
@@ -543,8 +766,35 @@ async function continuePipelineExecution({ state, send, res }) {
     activeFile,
     userModel,
     commandDirectives,
+    workspaceContext,
+    sessionProfile,
   } = state.request;
   const creditMultiplier = Math.max(1, Number(commandDirectives?.creditMultiplier || 1));
+  const toolContext = {
+    ...buildWorkspaceContext({
+      activeFile,
+      workspaceContext,
+    }),
+    profile: sessionProfile || null,
+  };
+  const indexedWorkspaceFiles =
+    String(medium).toLowerCase() === 'build'
+      ? await suggestIndexedFiles({
+        message,
+        workspaceContext: toolContext,
+        profile: sessionProfile || null,
+        limit: Math.min(6, MAX_FILES_TO_TOUCH),
+      })
+      : [];
+  const privilegedToolContext = {
+    ...toolContext,
+    permissionGrant: buildToolPermissionGrant({
+      write: true,
+      exec: true,
+      riskyExec: true,
+      source: 'internal_pipeline',
+    }),
+  };
 
   let effectiveKingPlan = state.kingResult;
   const shapedAgentOutputs = buildAgentOutputsForKing(state.agentOutputs);
@@ -584,6 +834,7 @@ async function continuePipelineExecution({ state, send, res }) {
     files = Array.isArray(filesToTouch) ? filesToTouch : [];
     if (!files.length && effectiveKingPlan?.filesToTouch?.length) files = effectiveKingPlan.filesToTouch;
     if (!files.length && activeFile) files = [activeFile];
+    if (!files.length && indexedWorkspaceFiles.length) files = indexedWorkspaceFiles;
     if (!files.length && state.tree && isComplexRequest(message) && ['build', 'plan'].includes(String(medium).toLowerCase())) {
       const flat = flattenFileTree(state.tree);
       const graph = buildImportGraph(PROJECT_ROOT, flat);
@@ -609,8 +860,12 @@ async function continuePipelineExecution({ state, send, res }) {
     if (files.length) {
       send({ type: 'files', files });
       for (const file of files) {
-        const fullPath = resolveWithinRoot(file);
-        const before = fullPath && fs.existsSync(fullPath) ? fs.readFileSync(fullPath, 'utf-8') : '';
+        const fileRead = await toolRegistry.executeTool({
+          name: 'read_file',
+          input: { path: file, allowMissing: true },
+          context: privilegedToolContext,
+        });
+        const before = fileRead?.kind === 'text' ? fileRead.content || '' : '';
         send({ type: 'file_start', file });
         const payload = `FILE PATH:\n${file}\nCURRENT CONTENT:\n${before}\n\nREQUEST:\n${finalMessage}`;
         const text = await callProvider({
@@ -620,9 +875,33 @@ async function continuePipelineExecution({ state, send, res }) {
           messages: [{ role: 'user', content: payload }],
         });
         combined += `\n\n// FILE: ${file}\n${text}`;
-        send({ type: 'file_done', file, before, after: text });
+        const patchSet = await toolRegistry.executeTool({
+          name: 'apply_patch_preview',
+          input: {
+            file,
+            before,
+            after: text,
+            approvalPolicy: 'review_required',
+          },
+          context: privilegedToolContext,
+        });
+        if (applyMode === 'write') {
+          const applyResult = await toolRegistry.executeTool({
+            name: 'apply_patch_apply',
+            input: {
+              patchId: patchSet.patchId,
+              force: true,
+              verify: true,
+            },
+            context: privilegedToolContext,
+          });
+          if (applyResult?.blocked) {
+            send({ type: 'warning', message: `Verification blocked auto-apply for ${file}.` });
+          }
+        }
+        send({ type: 'patch_preview', file, patchSet });
+        send({ type: 'file_done', file, before, after: text, patchSet });
         appendAudit(sessionId || 'anonymous', { file, before, after: text });
-        if (applyMode === 'write' && fullPath) atomicWrite(fullPath, text);
       }
     } else {
       const text = await callProvider({
@@ -672,8 +951,12 @@ async function continuePipelineExecution({ state, send, res }) {
       }
 
       send({ type: 'file_start', file });
-      const fullPath = resolveWithinRoot(file);
-      const before = fullPath && fs.existsSync(fullPath) ? fs.readFileSync(fullPath, 'utf-8') : '';
+      const fileRead = await toolRegistry.executeTool({
+        name: 'read_file',
+        input: { path: file, allowMissing: true },
+        context: privilegedToolContext,
+      });
+      const before = fileRead?.kind === 'text' ? fileRead.content || '' : '';
       if (sessionId) {
         saveCheckpoint(sessionId, {
           filesCompleted: completed,
@@ -694,10 +977,34 @@ async function continuePipelineExecution({ state, send, res }) {
         commandDirectives,
         send: (data) => send({ ...data, file }),
       });
-      if (applyMode === 'write' && fullPath) atomicWrite(fullPath, finalCode);
+      const patchSet = await toolRegistry.executeTool({
+        name: 'apply_patch_preview',
+        input: {
+          file,
+          before,
+          after: finalCode,
+          approvalPolicy: 'review_required',
+        },
+        context: privilegedToolContext,
+      });
+      if (applyMode === 'write') {
+        const applyResult = await toolRegistry.executeTool({
+          name: 'apply_patch_apply',
+          input: {
+            patchId: patchSet.patchId,
+            force: true,
+            verify: true,
+          },
+          context: privilegedToolContext,
+        });
+        if (applyResult?.blocked) {
+          send({ type: 'warning', message: `Verification blocked auto-apply for ${file}.` });
+        }
+      }
       completed.push(file);
       pending = pending.filter((pendingFile) => pendingFile !== file);
-      send({ type: 'file_done', file, before, after: finalCode, score, tier, language });
+      send({ type: 'patch_preview', file, patchSet });
+      send({ type: 'file_done', file, before, after: finalCode, score, tier, language, patchSet });
       appendAudit(sessionId || 'anonymous', { file, before, after: finalCode, score, tier, language });
       if (sessionId) {
         updateCredits(sessionId, Math.ceil((estimateTokens(finalCode) + estimateTokens(message)) * creditMultiplier));
@@ -764,6 +1071,7 @@ app.post('/api/code', rateLimit, async (req, res) => {
     activeFile,
     userModel,
     sketchContext = null,
+    workspaceContext = null,
   } = req.body;
 
   if (!message) return res.status(400).json({ error: 'message required' });
@@ -794,6 +1102,7 @@ app.post('/api/code', rateLimit, async (req, res) => {
   const effectiveSection = commandDirectives.effectiveSection || section;
   const effectiveMedium = commandDirectives.effectiveMedium || medium;
   const effectiveApplyMode = shouldForcePreviewMode(commandDirectives) ? 'preview' : applyMode;
+  const sessionKey = sessionId ? getSessionKey(sessionId) : null;
 
   if (req.query.async === 'true') {
     const validation = validateRequest(variant, effectiveSection, effectiveMedium);
@@ -801,6 +1110,16 @@ app.post('/api/code', rateLimit, async (req, res) => {
       return res.status(403).json({
         error: validation.reason,
         upgrade: validation.upgrade ?? null,
+      });
+    }
+    if (sessionKey?.key) {
+      return res.status(400).json({
+        error: 'Async mode is disabled for BYOK sessions so patch review and verification stay on the main streaming path.',
+      });
+    }
+    if (!hasPlatformModelAccess()) {
+      return res.status(503).json({
+        error: 'Platform orchestration is unavailable. Add OPENROUTER_API_KEY or attach a session API key.',
       });
     }
 
@@ -811,7 +1130,9 @@ app.post('/api/code', rateLimit, async (req, res) => {
     }
 
     const jobId = `job_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    jobs.set(jobId, { status: 'running', stage: 0, label: 'Queued...', result: null, error: null });
+    const job = { id: jobId, kind: 'async_code', status: 'running', stage: 0, label: 'Queued...', result: null, error: null };
+    jobs.set(jobId, job);
+    void storeTaskSnapshot(job);
     res.json({ jobId, status: 'queued' });
 
     orchestrate({
@@ -827,13 +1148,19 @@ app.post('/api/code', rateLimit, async (req, res) => {
         if (!job) return;
         if (data.type === 'stage') job.label = data.label;
         if (data.type === 'stage_done') job.stage = data.stage;
+        job.updatedAt = new Date().toISOString();
+        void storeTaskSnapshot(job);
       },
     })
       .then(({ finalCode, score, tier, language }) => {
-        jobs.set(jobId, { status: 'done', result: finalCode, score, tier, language, stage: 8, label: 'Complete' });
+        const doneJob = { id: jobId, kind: 'async_code', status: 'done', result: finalCode, score, tier, language, stage: 8, label: 'Complete', updatedAt: new Date().toISOString() };
+        jobs.set(jobId, doneJob);
+        void storeTaskSnapshot(doneJob);
       })
       .catch(err => {
-        jobs.set(jobId, { status: 'failed', error: err.message });
+        const failedJob = { id: jobId, kind: 'async_code', status: 'failed', error: err.message, updatedAt: new Date().toISOString() };
+        jobs.set(jobId, failedJob);
+        void storeTaskSnapshot(failedJob);
       });
     return;
   }
@@ -851,6 +1178,11 @@ app.post('/api/code', rateLimit, async (req, res) => {
     logDurgaIncident('payload_too_large', strippedMessage.slice(0, 50), true, { ip: getClientIp(req), size: strippedMessage.length });
     return res.status(400).json({ error: 'Message too long. Max 8000 characters.' });
   }
+  if (!sessionKey?.key && !hasPlatformModelAccess()) {
+    return res.status(503).json({
+      error: 'No model access available. Set OPENROUTER_API_KEY for platform mode or add a session BYOK key.',
+    });
+  }
 
   sseHeaders(res);
   const send = mkSend(res);
@@ -865,11 +1197,24 @@ app.post('/api/code', rateLimit, async (req, res) => {
     logDurgaIncident('grind_override', strippedMessage.slice(0, 50), false, { ip: getClientIp(req), size: strippedMessage.length });
     console.log('  ? GRIND OVERRIDE triggered');
     send({ type: 'stage', stage: 1, label: 'Chanakya Override' });
-    const grindModel = getVariantModel(variant, 'G');
-    const grindResponse = await callOpenRouter(grindModel,
-      [{ role: 'user', content: strippedMessage }],
-      `You are Chanakya. Acknowledge reality in ONE sharp sentence. Give ONE specific executable action for the next 10 minutes. End with: "You are only meant to be for grinding. Grind as much as in your prime."`
-    );
+    let grindResponse = '';
+    if (sessionKey?.key) {
+      const provider = sessionKey.provider || detectProvider(sessionKey.key);
+      const model = userModel || sessionKey.model || defaultModelForProvider(provider);
+      grindResponse = await callProvider({
+        provider,
+        apiKey: sessionKey.key,
+        model,
+        system: 'You are Chanakya. Acknowledge reality in ONE sharp sentence. Give ONE specific executable action for the next 10 minutes. End with: "You are only meant to be for grinding. Grind as much as in your prime."',
+        messages: [{ role: 'user', content: strippedMessage }],
+      });
+    } else {
+      const grindModel = getVariantModel(variant, 'G');
+      grindResponse = await callOpenRouter(grindModel,
+        [{ role: 'user', content: strippedMessage }],
+        `You are Chanakya. Acknowledge reality in ONE sharp sentence. Give ONE specific executable action for the next 10 minutes. End with: "You are only meant to be for grinding. Grind as much as in your prime."`
+      );
+    }
     send({ type: 'done', tier: 0, score: '8', text: grindResponse });
     res.end();
     return;
@@ -886,6 +1231,8 @@ app.post('/api/code', rateLimit, async (req, res) => {
 
     if (sessionId) {
       getSession(sessionId);
+      const inferredProfile = inferSessionProfile(strippedMessage, workspaceContext, getSessionProfile(sessionId));
+      setSessionProfile(sessionId, inferredProfile);
       await summarizeSessionIfNeeded(sessionId, variant);
       addMessage(sessionId, 'user', strippedMessage);
     }
@@ -894,6 +1241,13 @@ app.post('/api/code', rateLimit, async (req, res) => {
     const contextPayload = sessionId ? buildContextPayload(sessionId) : { context: '' };
     if (contextPayload.context) {
       contextualMessage = `${contextPayload.context}\n\nCURRENT_REQUEST:\n${strippedMessage}`;
+    }
+    const sessionProfile = sessionId
+      ? getSessionProfile(sessionId)
+      : inferSessionProfile(strippedMessage, workspaceContext, null);
+    const profileBlock = buildProfileContextBlock(sessionProfile);
+    if (profileBlock) {
+      contextualMessage = `${profileBlock}\n\n${contextualMessage}`;
     }
     const sketchBlock = buildSketchContextBlock(sketchContext);
     if (sketchBlock) {
@@ -932,7 +1286,9 @@ app.post('/api/code', rateLimit, async (req, res) => {
         userModel,
         parallelAgents,
         commandDirectives,
+        sessionProfile,
         sketchContext,
+        workspaceContext,
       },
       contextualMessage,
       tree,
@@ -1065,30 +1421,214 @@ app.post('/api/session/sketch', (req, res) => {
   res.json({ sketch: stored });
 });
 
+app.get('/api/session/profile', (req, res) => {
+  const { sessionId } = req.query;
+  if (!sessionId) return res.status(400).json({ error: 'sessionId required' });
+  res.json({ profile: getSessionProfile(String(sessionId)) });
+});
+
+app.post('/api/session/profile', (req, res) => {
+  const { sessionId, profile } = req.body || {};
+  if (!sessionId) return res.status(400).json({ error: 'sessionId required' });
+  res.json({ profile: setSessionProfile(sessionId, profile || {}) });
+});
+
+app.get('/api/tools/schema', (req, res) => {
+  res.json({
+    tools: toolRegistry.getToolSchema(),
+  });
+});
+
+app.get('/api/index/status', async (req, res) => {
+  try {
+    const status = await repoIndex.getStatus();
+    res.json(status);
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Failed to read index status.' });
+  }
+});
+
+app.post('/api/index/rebuild', async (req, res) => {
+  try {
+    const status = await toolRegistry.executeTool({
+      name: 'rebuild_index',
+      input: {},
+      context: {
+        permissionGrant: buildToolPermissionGrant({ read: true, source: 'index_rebuild_route' }),
+      },
+    });
+    res.json(status);
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Failed to rebuild repo index.' });
+  }
+});
+
+app.get('/api/diagnostics', async (req, res) => {
+  try {
+    const file = String(req.query.file || '');
+    const diagnostics = await toolRegistry.executeTool({
+      name: 'get_diagnostics',
+      input: { file },
+      context: {
+        permissionGrant: buildToolPermissionGrant({ read: true, source: 'diagnostics_route' }),
+      },
+    });
+    res.json(diagnostics);
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Failed to collect diagnostics.' });
+  }
+});
+
+app.post('/api/tools/execute', async (req, res) => {
+  const { name, input = {}, context = {} } = req.body || {};
+  if (!name) return res.status(400).json({ error: 'tool name required' });
+  const tool = toolRegistry.getToolSchema().find((entry) => entry.name === name);
+  if (!tool) return res.status(404).json({ ok: false, name, error: 'Unknown tool.' });
+  if (tool.permission !== 'read') {
+    return res.status(403).json({
+      ok: false,
+      name,
+      error: 'Privileged tools must use dedicated patch, verification, or runtime routes.',
+    });
+  }
+  try {
+    const result = await toolRegistry.executeTool({
+      name,
+      input,
+      context: {
+        ...context,
+        permissionGrant: buildToolPermissionGrant({ read: true, source: 'tools_execute_route' }),
+      },
+    });
+    res.json({ ok: true, name, result });
+  } catch (err) {
+    res.status(400).json({ ok: false, name, error: err.message || 'Tool execution failed.' });
+  }
+});
+
+app.post('/api/patches/preview', async (req, res) => {
+  const { file, before, after, approvalPolicy = 'review_required', context = {} } = req.body || {};
+  if (!file || after === undefined) {
+    return res.status(400).json({ error: 'file and after are required' });
+  }
+  try {
+    const patchSet = await toolRegistry.executeTool({
+      name: 'apply_patch_preview',
+      input: { file, before, after, approvalPolicy },
+      context: {
+        ...context,
+        permissionGrant: buildToolPermissionGrant({
+          write: true,
+          source: 'patch_preview_route',
+        }),
+      },
+    });
+    res.json(patchSet);
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'Failed to create patch preview.' });
+  }
+});
+
+app.post('/api/patches/apply', async (req, res) => {
+  const { patchId, patchSet, force = false, context = {} } = req.body || {};
+  if (!patchId && !patchSet) {
+    return res.status(400).json({ error: 'patchId or patchSet is required' });
+  }
+  try {
+    const result = await toolRegistry.executeTool({
+      name: 'apply_patch_apply',
+      input: { patchId, patchSet, force, verify: true },
+      context: {
+        ...context,
+        permissionGrant: buildToolPermissionGrant({
+          write: true,
+          source: 'patch_apply_route',
+        }),
+      },
+    });
+    if (result?.blocked) {
+      return res.status(409).json(result);
+    }
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'Failed to apply patch.' });
+  }
+});
+
+app.post('/api/verify', async (req, res) => {
+  const { file = '', includeTests = true, includeSemgrep = true, context = {} } = req.body || {};
+  try {
+    const result = await toolRegistry.executeTool({
+      name: 'verify_workspace',
+      input: { file, includeTests, includeSemgrep },
+      context: {
+        ...context,
+        permissionGrant: buildToolPermissionGrant({
+          exec: true,
+          source: 'verify_route',
+        }),
+      },
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'Workspace verification failed.' });
+  }
+});
+
 app.post('/api/runtime/exec', async (req, res) => {
-  const { command, cwd, runtimeMode = 'auto', sessionId } = req.body;
+  const { command, cwd, runtimeMode = 'auto', workspaceContext = null } = req.body || {};
   if (!command) return res.status(400).json({ error: 'command required' });
 
-  const runtimeCwd = resolveRuntimeCwd(cwd);
-  if (!runtimeCwd) return res.status(403).json({ error: 'Invalid working directory' });
-
-  const result = await runRuntime({
-    command,
-    cwd: runtimeCwd,
-    runtimeMode,
-    allowLocal: allowLocalRuntime(),
-    commandId: randomUUID(),
-    sessionId,
-  });
-
-  res.json(result);
+  try {
+    const result = await toolRegistry.executeTool({
+      name: 'run_command',
+      input: { command, cwd, runtimeMode },
+      context: {
+        ...buildWorkspaceContext({ workspaceContext }),
+        permissionGrant: buildToolPermissionGrant({
+          exec: true,
+          riskyExec: false,
+          source: 'runtime_exec_route',
+        }),
+      },
+    });
+    void storeTaskSnapshot({
+      id: result.commandId,
+      kind: 'runtime',
+      status: result.code === 0 ? 'done' : 'failed',
+      label: command,
+      stage: 1,
+      error: result.error || null,
+      updatedAt: new Date().toISOString(),
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'Runtime execution failed.' });
+  }
 });
 
 app.post('/api/runtime/stream', async (req, res) => {
-  const { command, cwd, runtimeMode = 'auto' } = req.body;
+  const { command, cwd, runtimeMode = 'auto', workspaceContext = null } = req.body || {};
   if (!command) return res.status(400).json({ error: 'command required' });
+  let streamDescriptor;
+  try {
+    streamDescriptor = await toolRegistry.executeTool({
+      name: 'stream_command',
+      input: { command, cwd, runtimeMode },
+      context: {
+        ...buildWorkspaceContext({ workspaceContext }),
+        permissionGrant: buildToolPermissionGrant({
+          exec: true,
+          riskyExec: false,
+          source: 'runtime_stream_route',
+        }),
+      },
+    });
+  } catch (err) {
+    return res.status(400).json({ error: err.message || 'Failed to validate runtime stream.' });
+  }
 
-  const runtimeCwd = resolveRuntimeCwd(cwd);
+  const runtimeCwd = resolveRuntimeCwd(streamDescriptor?.transport?.body?.cwd || cwd);
   if (!runtimeCwd) return res.status(403).json({ error: 'Invalid working directory' });
 
   sseHeaders(res);
@@ -1108,6 +1648,29 @@ app.post('/api/runtime/stream', async (req, res) => {
       commandId: randomUUID(),
       onEvent: (payload) => {
         if (payload?.commandId) activeCommandId = payload.commandId;
+        if (payload?.commandId) {
+          const status =
+            payload.type === 'start'
+              ? 'running'
+              : payload.type === 'done'
+                ? payload.code === 0
+                  ? 'done'
+                  : 'failed'
+                : payload.type === 'stopped'
+                  ? 'stopped'
+                  : payload.type === 'error'
+                    ? 'failed'
+                    : 'running';
+          void storeTaskSnapshot({
+            id: payload.commandId,
+            kind: 'runtime',
+            status,
+            label: command,
+            stage: status === 'running' ? 0.5 : 1,
+            error: payload.message || payload.error || null,
+            updatedAt: new Date().toISOString(),
+          });
+        }
         send(payload);
       },
     });
@@ -1125,15 +1688,27 @@ app.post('/api/runtime/stop', (req, res) => {
   if (!commandId) return res.status(400).json({ error: 'commandId required' });
   const result = stopRuntimeCommand(commandId);
   if (!result.stopped) return res.status(404).json({ error: 'Command not found or already finished.' });
+  void storeTaskSnapshot({
+    id: commandId,
+    kind: 'runtime',
+    status: 'stopped',
+    label: 'stopped',
+    stage: 1,
+    updatedAt: new Date().toISOString(),
+  });
   res.json({ success: true, commandId });
 });
 
 // ── HEALTH CHECK ───────────────────────────────────────────────────────────────
-app.get('/api/health', (req, res) => {
+app.get('/api/health', async (req, res) => {
+  const indexStatus = await repoIndex.getStatus().catch(() => null);
   res.json({
     status: 'ok',
     variants: Object.keys(VARIANT_CAPS),
     tavilyEnabled: !!process.env.TAVILY_API_KEY,
+    openRouterEnabled: hasPlatformModelAccess(),
+    byokSupported: true,
+    index: indexStatus,
   });
 });
 
@@ -1346,6 +1921,7 @@ app.post('/api/code/jobs/:id/agent-decision', async (req, res) => {
     }
 
     jobs.delete(job.id);
+    void removeTaskSnapshot(job.id);
     await continuePipelineExecution({ state, send, res });
   } catch (err) {
     console.error(`Agent approval resume error: ${err.message}`);
@@ -1389,46 +1965,31 @@ function getFileTree(dir) {
 
 app.get('/api/fs/tree', (req, res) => {
   try {
-    const tree = getFileTree(PROJECT_ROOT);
-    res.json(tree);
+    res.json(getFileTree(PROJECT_ROOT));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get('/api/fs/file', (req, res) => {
+app.get('/api/fs/file', async (req, res) => {
   const { path: relPath } = req.query;
   if (!relPath) return res.status(400).json({ error: 'path required' });
 
   try {
-    const fullPath = resolveWithinRoot(relPath);
-    if (!fullPath) return res.status(403).json({ error: 'Access denied' });
-
-    if (!fs.existsSync(fullPath)) return res.status(404).json({ error: 'File not found' });
-    if (fs.statSync(fullPath).isDirectory()) {
-      return res.status(400).json({ error: 'Cannot open a folder in the editor' });
-    }
-
-    if (isImageFile(fullPath)) {
-      return res.json({
-        kind: 'image',
-        url: `/api/fs/raw?path=${encodeURIComponent(String(relPath))}`,
-      });
-    }
-
-    const buffer = fs.readFileSync(fullPath);
-    if (isBinaryBuffer(buffer)) {
-      return res.json({
-        kind: 'binary',
-        content: '',
-        message: 'Binary files cannot be edited in the code editor.',
-      });
-    }
-
-    const content = buffer.toString('utf-8');
-    res.json({ kind: 'text', content });
+    const result = await toolRegistry.executeTool({
+      name: 'read_file',
+      input: { path: String(relPath) },
+    });
+    if (result.kind === 'text') return res.json({ kind: 'text', content: result.content });
+    if (result.kind === 'image') return res.json({ kind: 'image', url: result.url });
+    return res.json({
+      kind: 'binary',
+      content: '',
+      message: result.message || 'Binary files cannot be edited in the code editor.',
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    const status = err.message === 'File not found' ? 404 : err.message === 'Access denied' ? 403 : 500;
+    res.status(status).json({ error: err.message });
   }
 });
 
@@ -1539,42 +2100,50 @@ app.post('/api/fs/delete', (req, res) => {
   }
 });
 
-app.get('/api/fs/search', (req, res) => {
+app.get('/api/fs/search', async (req, res) => {
   const query = String(req.query.query || '').toLowerCase().trim();
   if (!query) return res.json({ results: [] });
-  const tree = getFileTree(PROJECT_ROOT);
-  const flat = flattenFileTree(tree);
-  const results = flat
-    .map(f => f.path)
-    .filter(p => p.toLowerCase().includes(query))
-    .slice(0, 200);
-  res.json({ results });
+  try {
+    const result = await toolRegistry.executeTool({
+      name: 'search_text',
+      input: { query, limit: 200 },
+    });
+    res.json({
+      results: (result.results || []).map((entry) => entry.path),
+      matches: result.results || [],
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ── TERMINAL EXECUTION (Phase 5 - Local Fallback) ──────────────────────────────
-app.post('/api/term/exec', (req, res) => {
-  const { command } = req.body;
+app.post('/api/term/exec', async (req, res) => {
+  const { command, cwd, runtimeMode = 'auto', workspaceContext = null } = req.body || {};
   if (!command) return res.status(400).json({ error: 'command required' });
-
-  // Basic security check - prevent obvious destruction
-  if (command.includes('rm -rf /') || command.includes('format c:')) {
-    return res.status(403).json({ error: 'Command blocked by safety protocol' });
-  }
-
-  exec(command, { cwd: PROJECT_ROOT }, (error, stdout, stderr) => {
-    res.json({
-      stdout: stdout || '',
-      stderr: stderr || '',
-      error: error ? error.message : null,
-      code: error ? error.code : 0
+  try {
+    const result = await toolRegistry.executeTool({
+      name: 'run_command',
+      input: { command, cwd, runtimeMode },
+      context: {
+        ...buildWorkspaceContext({ workspaceContext }),
+        permissionGrant: buildToolPermissionGrant({
+          exec: true,
+          riskyExec: false,
+          source: 'term_exec_route',
+        }),
+      },
     });
-  });
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'Terminal execution failed.' });
+  }
 });
 
 // ── BOOT ───────────────────────────────────────────────────────────────────────
-app.listen(3002, () => {
+app.listen(CODE_SERVER_PORT, () => {
   console.log('\n  ⚔  KAUTILYA CODE SERVER v2');
   console.log('  Variant-aware | Concurrent tribunal | Semantic memory | Arbitration\n');
   logVariantBoot();
-  console.log('\n  http://localhost:3002\n');
+  console.log(`\n  http://localhost:${CODE_SERVER_PORT}\n`);
 });

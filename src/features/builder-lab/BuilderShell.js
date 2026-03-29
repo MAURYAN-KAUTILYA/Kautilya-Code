@@ -7,6 +7,7 @@ import MacOSDock from "@/components/ui/mac-os-dock";
 import { useAppTheme } from "@/theme/AppThemeProvider";
 import AIPanel from "./Aipanel";
 import EditorSection from "./editor";
+import RuntimeTerminal from "./RuntimeTerminal";
 import SketchBoard from "./SketchBoard";
 import { COMMAND_REGISTRY, DEFAULT_PERSISTENT_COMMANDS, describePersistentCommands, parseLeadingSlashCommands, resolveCommandSet, } from "../../shared/kautilya-commands.js";
 const Logo = ({ size = 20 }) => (_jsx("svg", { xmlns: "http://www.w3.org/2000/svg", width: size, height: size, fill: "none", viewBox: "0 0 250 250", children: _jsx("path", { d: "m124.7 5.63c-0.45-0.62-1.24-0.62-1.69 0l-82.06 118.2c-0.32 0.46-0.32 1.13 0 1.59l82.3 118.9c0.44 0.64 1.25 0.64 1.7 0l83.51-119c0.33-0.46 0.33-1.11 0-1.57l-83.76-118.2zm0.05 3.17 24.04 35-24.04-20.02v-14.98zm-1.7 0.01v14.97l-22.74 19.69 22.74-34.66zm1.7 18.6 28.68 21.72 12.52 17.23-41.2-18.64v-20.31zm-1.7 0v20.31l-38.89 18.03 12.34-17.06 26.55-21.28zm1.7 22.66 43.48 19.64 11.55 17.04-55.03-18.28v-18.4zm-1.7 0v18.4l-53.63 17.25 13-16.81 40.63-18.84zm1.7 20.23 57.72 19.04 11.79 18.63-69.51-19.31v-18.36zm-1.7 0v18.36l-67.86 18.47 12.36-18.25 55.5-18.58zm1.7 20.18 71.2 20.13 9.24 12.4-80.44-13.09v-19.44zm-1.7 0v19.44l-78.77 13.09 8.43-12.45 70.34-20.08zm1.7 21.24 79.01 13.01-26.83 14.21-52.18-15.02v-12.2zm-1.7 0v12.2l-52.18 15.02-25.82-14.11 78-13.11zm1.7 14.07 48.66 14.59-18.53 10.03-30.13-10.85v-13.77zm-1.7 0v13.77l-28.63 12.12-20.51-10.99 49.14-14.9zm80.68 1.99-30.23 42.54-49.07 23.6v-24.21l79.3-41.93zm-158.1 0.33 77.46 42.01v23.69l-49.4-23.74-28.06-41.96zm79.16 13.27 27.32 10.42-27.32 16.33v-26.75zm-1.7 0v26.69l-26.06-15.24 26.06-11.45zm48.85 31.53-16.89 23.68-0.36-1.48-30.22 20.83v-19.24l47.47-23.79zm-94.74 0.38 45.89 23.41v18.08l-28.72-19.69-0.49 1.3-16.68-23.1zm75.06 25.82-27.47 40.6v-21.57l27.47-19.03zm-56.46 0.72 27.29 18.92v21.57l-27.29-40.49z", fill: "currentColor" }) }));
@@ -135,7 +136,7 @@ function readStoredRuntimeMode() {
     const stored = window.localStorage.getItem(TERMINAL_RUNTIME_KEY);
     return stored === "sandbox" || stored === "local" ? stored : "auto";
 }
-function Terminal({ activeFile, sessionId, onConsoleEntry, }) {
+export function LegacyTerminal({ activeFile, sessionId, onConsoleEntry, }) {
     const [lines, setLines] = useState([
         { id: 0, type: "info", text: "Kautilya Terminal • hybrid runtime console ready" },
         { id: 1, type: "info", text: "Run commands in the project folder, stream logs, and stop active jobs." },
@@ -798,6 +799,8 @@ export default function BuilderShell() {
     const [applyMode, setApplyMode] = useState("preview");
     const [apiKeyInfo, setApiKeyInfo] = useState(null);
     const [pendingDiffs, setPendingDiffs] = useState([]);
+    const [editorSelection, setEditorSelection] = useState(null);
+    const [editorDiagnostics, setEditorDiagnostics] = useState([]);
     const [selectedExplorerPath, setSelectedExplorerPath] = useState(DEFAULT_WORKSPACE_FILE);
     const [openFolders, setOpenFolders] = useState(new Set());
     const [explorerDraft, setExplorerDraft] = useState(null);
@@ -1145,6 +1148,23 @@ export default function BuilderShell() {
             return;
         window.localStorage.setItem("kautilya_preview_url", previewUrl);
     }, [previewUrl]);
+    const buildWorkspaceToolContext = () => {
+        const openFiles = openTabs
+            .map((tab) => {
+            const content = tab === activeFile ? code : fileSnapshots[tab];
+            if (typeof content !== "string")
+                return null;
+            return { path: tab, content };
+        })
+            .filter((entry) => Boolean(entry));
+        return {
+            activeFile,
+            openTabs,
+            openFiles,
+            selection: editorSelection,
+            diagnostics: editorDiagnostics,
+        };
+    };
     const writeWorkspaceFile = async (targetPath, content) => {
         if (workspaceSource === "local") {
             const entry = localFilesRef.current[targetPath];
@@ -1160,11 +1180,15 @@ export default function BuilderShell() {
             };
             return;
         }
-        await fetch("/api/fs/file", {
+        const response = await fetch("/api/fs/file", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ path: targetPath, content }),
         });
+        if (!response.ok) {
+            const payload = await response.json().catch(() => ({}));
+            throw new Error(payload.error || `Failed to save ${targetPath}`);
+        }
     };
     const handleSave = async () => {
         if (activeFileState.kind !== "text" || !activeFile)
@@ -1272,8 +1296,38 @@ export default function BuilderShell() {
     const handleAcceptDiff = async () => {
         if (!currentDiff)
             return;
+        let shouldAdvanceQueue = true;
         try {
-            await writeWorkspaceFile(currentDiff.file, currentDiff.after);
+            if (workspaceSource === "project" && currentDiff.patchSet?.patchId) {
+                const response = await fetch("/api/patches/apply", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        patchId: currentDiff.patchSet.patchId,
+                        force: false,
+                        context: buildWorkspaceToolContext(),
+                    }),
+                });
+                if (!response.ok) {
+                    const payload = await response.json().catch(() => ({}));
+                    if (response.status === 409) {
+                        shouldAdvanceQueue = false;
+                        const verificationReport = (payload.verificationReport || {});
+                        const failedChecks = Array.isArray(verificationReport.checks)
+                            ? verificationReport.checks.filter((check) => check.status === "failed").map((check) => check.name)
+                            : [];
+                        const reason = failedChecks.length > 0
+                            ? `verification failed (${failedChecks.join(", ")})`
+                            : payload.reason || "verification blocked the patch";
+                        addSystemMessage(`Patch blocked for ${currentDiff.file}: ${reason}`, "error");
+                        return;
+                    }
+                    throw new Error(payload.error || `Failed to apply patch for ${currentDiff.file}`);
+                }
+            }
+            else {
+                await writeWorkspaceFile(currentDiff.file, currentDiff.after);
+            }
             snapshotFile(currentDiff.file, currentDiff.after);
             if (activeFile === currentDiff.file)
                 setCode(currentDiff.after);
@@ -1288,7 +1342,9 @@ export default function BuilderShell() {
             addSystemMessage(`Failed to apply ${currentDiff.file}: ${err?.message || "unknown error"}`, "error");
         }
         finally {
-            setPendingDiffs((prev) => prev.slice(1));
+            if (shouldAdvanceQueue) {
+                setPendingDiffs((prev) => prev.slice(1));
+            }
         }
     };
     const handleRejectDiff = async () => {
@@ -1319,6 +1375,7 @@ export default function BuilderShell() {
                 cwd: deriveWorkingDirectory(activeFile),
                 runtimeMode: readStoredRuntimeMode(),
                 sessionId,
+                workspaceContext: buildWorkspaceToolContext(),
             }),
         });
         const data = await res.json();
@@ -1575,8 +1632,26 @@ export default function BuilderShell() {
             addSystemMessage(`Working on ${data.file}`, "running");
             return;
         }
+        if (data.type === "patch_preview" && data.file && data.patchSet) {
+            const patchSet = data.patchSet;
+            const patchFile = patchSet.files?.[0];
+            const before = patchFile?.before ?? fileSnapshots[data.file] ?? "";
+            const after = patchFile?.after ?? "";
+            if (after && before !== after) {
+                setPendingDiffs((prev) => [...prev, { file: data.file, before, after, patchSet }]);
+            }
+            if (patchSet.verification?.warning) {
+                addSystemMessage(`Review warning for ${data.file}: ${patchSet.verification.warning}`, "running");
+            }
+            if (patchSet.verification?.blocked) {
+                addSystemMessage(`Dependency risk flagged for ${data.file}. Review carefully before applying.`, "error");
+            }
+            return;
+        }
         if (data.type === "file_done" && data.file) {
             setFileState(data.file, "done");
+            if (data.patchSet)
+                return;
             const before = data.before ?? fileSnapshots[data.file] ?? "";
             const after = data.after ?? "";
             if (after && before !== after) {
@@ -1754,6 +1829,7 @@ export default function BuilderShell() {
                 temporaryCommands,
                 commandDirectives: requestDirectives,
                 sketchContext,
+                workspaceContext: buildWorkspaceToolContext(),
             }),
         });
         await consumeSseResponse(res, assistantId);
@@ -2505,7 +2581,7 @@ export default function BuilderShell() {
                                     const dotC = LANG_COLORS[ext] ?? "#6B7280";
                                     const isAct = tab === activeFile;
                                     return (_jsxs("div", { className: "tab-btn", onClick: () => openFile(tab), style: { display: "flex", alignItems: "center", gap: 6, padding: "0 12px", height: "100%", cursor: "pointer", background: isAct ? "var(--accent-soft)" : "transparent", borderRight: "1px solid var(--builder-border)", borderBottom: isAct ? "1px solid var(--accent-strong)" : "1px solid transparent", minWidth: 0, flexShrink: 0 }, children: [_jsx("span", { style: { width: 5, height: 5, borderRadius: "50%", background: dotC, flexShrink: 0 } }), _jsx("span", { style: { fontFamily: "'SF Mono','JetBrains Mono',monospace", fontSize: 11, color: isAct ? "var(--text-primary)" : "var(--builder-muted)", whiteSpace: "nowrap" }, children: fileName(tab) }), _jsx("span", { className: "tab-close", onClick: (e) => closeTab(tab, e), style: { opacity: 0, color: "var(--builder-muted)", display: "flex", transition: "opacity 0.1s", cursor: "pointer", marginLeft: 2 }, children: _jsx(IClose, {}) })] }, tab));
-                                }) })) : null, _jsxs("div", { style: { flex: 1, minHeight: 0, display: "flex" }, children: [panelMode === "editor" && fileTreeOpen ? (_jsxs("div", { style: { width: 286, flexShrink: 0, background: "var(--builder-glass)", borderRight: "1px solid var(--builder-border)", display: "flex", overflow: "hidden", backdropFilter: "blur(24px) saturate(160%)", WebkitBackdropFilter: "blur(24px) saturate(160%)" }, children: [_jsx("div", { style: { width: 44, borderRight: "1px solid var(--builder-border)", display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 10, gap: 8, background: "var(--builder-sidebar-bg)" }, children: _jsx("button", { title: "Files", style: { width: 30, height: 30, border: "none", background: "var(--accent-soft)", color: "var(--accent-strong)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center" }, children: _jsx(IFiles, {}) }) }), _jsxs("div", { style: { flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }, children: [_jsxs("div", { style: { padding: "12px 14px 10px", borderBottom: "1px solid var(--builder-border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }, children: [_jsxs("div", { style: { minWidth: 0 }, children: [_jsx("div", { style: { fontSize: 10, fontFamily: "'SF Mono','JetBrains Mono',monospace", color: "var(--builder-muted)", letterSpacing: "0.08em" }, children: "EXPLORER" }), _jsx("div", { style: { fontSize: 11, color: "var(--builder-muted-strong)", marginTop: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }, children: workspaceLabel })] }), _jsxs("div", { style: { display: "flex", alignItems: "center", gap: 4 }, children: [_jsx("button", { className: "ghost-icon-btn", onClick: () => startCreateEntry("file"), disabled: !canCreateExplorerItem, title: "New File", children: _jsx(IPlus, {}) }), _jsx("button", { className: "ghost-icon-btn", onClick: () => startCreateEntry("folder"), disabled: !canCreateExplorerItem, title: "New Folder", children: _jsx(IFolderPlus, {}) }), _jsx("button", { className: "ghost-icon-btn", onClick: () => void (workspaceSource === "project" ? refreshFileTree() : refreshLocalWorkspaceFromHandle()), title: "Refresh", children: _jsx(IRefresh, {}) }), _jsx("button", { className: "ghost-icon-btn", onClick: () => setOpenFolders(new Set()), title: "Collapse All", children: _jsx(ICollapse, {}) })] })] }), _jsxs("div", { style: { padding: "8px 12px", borderBottom: "1px solid var(--builder-border)", display: "flex", flexWrap: "wrap", gap: 6 }, children: [_jsx("button", { className: "ghost-btn", onClick: () => void openSystemFile(), children: "Open File" }), _jsx("button", { className: "ghost-btn", onClick: () => void openSystemFolder(), children: "Open Folder" }), workspaceSource === "local" ? _jsx("button", { className: "ghost-btn", onClick: () => void openProjectWorkspace(), children: "Project" }) : null, localReadOnly ? _jsx("span", { style: { fontFamily: "'SF Mono','JetBrains Mono',monospace", fontSize: 9, color: "var(--accent-alt)", letterSpacing: "0.08em", alignSelf: "center" }, children: "READ ONLY" }) : null] }), _jsx(FileTree, { tree: fileTree, activeFile: activeFile, selectedPath: selectedExplorerPath, draft: explorerDraft, openFolders: openFolders, canRename: canRenameExplorerItem, canDelete: canDeleteExplorerItem, dragState: explorerDragState, onSelectPath: setSelectedExplorerPath, onOpenFile: openFile, onToggleFolder: handleToggleFolder, onStartRename: startRenameEntry, onDelete: deleteExplorerNode, onDraftChange: (value) => setExplorerDraft((prev) => (prev ? { ...prev, value } : prev)), onCommitDraft: () => void commitExplorerDraft(), onCancelDraft: () => setExplorerDraft(null), onDragStart: handleExplorerDragStart, onDragEnd: handleExplorerDragEnd, onDragOverTarget: handleExplorerDragOverTarget, onDragLeaveTarget: handleExplorerDragLeaveTarget, onDropTarget: (node) => void handleExplorerDropTarget(node), onDropRoot: () => void handleExplorerDropRoot() })] })] })) : null, _jsx(EditorSection, { activeFile: activeFile, code: code, fileState: activeFileState, openTabsCount: openTabs.length, panelMode: panelMode, workspaceTab: workspaceTab, previewTab: previewTab, previewUrl: previewUrl, terminalPanel: _jsx(Terminal, { activeFile: activeFile, sessionId: sessionId, onConsoleEntry: appendConsoleEntry }), consoleEntries: consoleEntries, onCodeChange: setCode, onPreviewTabChange: setPreviewTab, onPreviewUrlApply: handlePreviewUrlApply, onUseFilePreview: handleUseFilePreview, onClearConsole: handleClearConsole, onPreviewConsoleEvent: appendConsoleEntry }), _jsx("input", { ref: filePickerRef, type: "file", onChange: handlePickedFileChange, style: { display: "none" } }), _jsx("input", { ref: folderPickerRef, type: "file", multiple: true, onChange: handlePickedFolderChange, style: { display: "none" } }), _jsx("input", { ref: attachmentFilePickerRef, type: "file", multiple: true, onChange: handleAttachmentFileChange, style: { display: "none" } }), _jsx("input", { ref: attachmentImagePickerRef, type: "file", accept: "image/*", multiple: true, onChange: handleAttachmentImageChange, style: { display: "none" } })] })] }), workflowRailOpen && agentWorkflows.length > 0 ? (_jsx(AgentWorkflowRail, { workflows: agentWorkflows, onClose: () => setWorkflowRailOpen(false), onDecision: handleAgentDecision })) : null] }), _jsx(SketchBoard, { open: sketchBoardOpen, value: sketchBoard, onChange: setSketchBoard, onNotesChange: () => {
+                                }) })) : null, _jsxs("div", { style: { flex: 1, minHeight: 0, display: "flex" }, children: [panelMode === "editor" && fileTreeOpen ? (_jsxs("div", { style: { width: 286, flexShrink: 0, background: "var(--builder-glass)", borderRight: "1px solid var(--builder-border)", display: "flex", overflow: "hidden", backdropFilter: "blur(24px) saturate(160%)", WebkitBackdropFilter: "blur(24px) saturate(160%)" }, children: [_jsx("div", { style: { width: 44, borderRight: "1px solid var(--builder-border)", display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 10, gap: 8, background: "var(--builder-sidebar-bg)" }, children: _jsx("button", { title: "Files", style: { width: 30, height: 30, border: "none", background: "var(--accent-soft)", color: "var(--accent-strong)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center" }, children: _jsx(IFiles, {}) }) }), _jsxs("div", { style: { flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }, children: [_jsxs("div", { style: { padding: "12px 14px 10px", borderBottom: "1px solid var(--builder-border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }, children: [_jsxs("div", { style: { minWidth: 0 }, children: [_jsx("div", { style: { fontSize: 10, fontFamily: "'SF Mono','JetBrains Mono',monospace", color: "var(--builder-muted)", letterSpacing: "0.08em" }, children: "EXPLORER" }), _jsx("div", { style: { fontSize: 11, color: "var(--builder-muted-strong)", marginTop: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }, children: workspaceLabel })] }), _jsxs("div", { style: { display: "flex", alignItems: "center", gap: 4 }, children: [_jsx("button", { className: "ghost-icon-btn", onClick: () => startCreateEntry("file"), disabled: !canCreateExplorerItem, title: "New File", children: _jsx(IPlus, {}) }), _jsx("button", { className: "ghost-icon-btn", onClick: () => startCreateEntry("folder"), disabled: !canCreateExplorerItem, title: "New Folder", children: _jsx(IFolderPlus, {}) }), _jsx("button", { className: "ghost-icon-btn", onClick: () => void (workspaceSource === "project" ? refreshFileTree() : refreshLocalWorkspaceFromHandle()), title: "Refresh", children: _jsx(IRefresh, {}) }), _jsx("button", { className: "ghost-icon-btn", onClick: () => setOpenFolders(new Set()), title: "Collapse All", children: _jsx(ICollapse, {}) })] })] }), _jsxs("div", { style: { padding: "8px 12px", borderBottom: "1px solid var(--builder-border)", display: "flex", flexWrap: "wrap", gap: 6 }, children: [_jsx("button", { className: "ghost-btn", onClick: () => void openSystemFile(), children: "Open File" }), _jsx("button", { className: "ghost-btn", onClick: () => void openSystemFolder(), children: "Open Folder" }), workspaceSource === "local" ? _jsx("button", { className: "ghost-btn", onClick: () => void openProjectWorkspace(), children: "Project" }) : null, localReadOnly ? _jsx("span", { style: { fontFamily: "'SF Mono','JetBrains Mono',monospace", fontSize: 9, color: "var(--accent-alt)", letterSpacing: "0.08em", alignSelf: "center" }, children: "READ ONLY" }) : null] }), _jsx(FileTree, { tree: fileTree, activeFile: activeFile, selectedPath: selectedExplorerPath, draft: explorerDraft, openFolders: openFolders, canRename: canRenameExplorerItem, canDelete: canDeleteExplorerItem, dragState: explorerDragState, onSelectPath: setSelectedExplorerPath, onOpenFile: openFile, onToggleFolder: handleToggleFolder, onStartRename: startRenameEntry, onDelete: deleteExplorerNode, onDraftChange: (value) => setExplorerDraft((prev) => (prev ? { ...prev, value } : prev)), onCommitDraft: () => void commitExplorerDraft(), onCancelDraft: () => setExplorerDraft(null), onDragStart: handleExplorerDragStart, onDragEnd: handleExplorerDragEnd, onDragOverTarget: handleExplorerDragOverTarget, onDragLeaveTarget: handleExplorerDragLeaveTarget, onDropTarget: (node) => void handleExplorerDropTarget(node), onDropRoot: () => void handleExplorerDropRoot() })] })] })) : null, _jsx(EditorSection, { activeFile: activeFile, code: code, fileState: activeFileState, openTabsCount: openTabs.length, panelMode: panelMode, workspaceTab: workspaceTab, previewTab: previewTab, previewUrl: previewUrl, terminalPanel: _jsx(RuntimeTerminal, { activeFile: activeFile, sessionId: sessionId, workspaceContext: buildWorkspaceToolContext(), onConsoleEntry: appendConsoleEntry }), consoleEntries: consoleEntries, onCodeChange: setCode, onPreviewTabChange: setPreviewTab, onPreviewUrlApply: handlePreviewUrlApply, onUseFilePreview: handleUseFilePreview, onClearConsole: handleClearConsole, onPreviewConsoleEvent: appendConsoleEntry, onSelectionChange: setEditorSelection, onDiagnosticsChange: setEditorDiagnostics }), _jsx("input", { ref: filePickerRef, type: "file", onChange: handlePickedFileChange, style: { display: "none" } }), _jsx("input", { ref: folderPickerRef, type: "file", multiple: true, onChange: handlePickedFolderChange, style: { display: "none" } }), _jsx("input", { ref: attachmentFilePickerRef, type: "file", multiple: true, onChange: handleAttachmentFileChange, style: { display: "none" } }), _jsx("input", { ref: attachmentImagePickerRef, type: "file", accept: "image/*", multiple: true, onChange: handleAttachmentImageChange, style: { display: "none" } })] })] }), workflowRailOpen && agentWorkflows.length > 0 ? (_jsx(AgentWorkflowRail, { workflows: agentWorkflows, onClose: () => setWorkflowRailOpen(false), onDecision: handleAgentDecision })) : null] }), _jsx(SketchBoard, { open: sketchBoardOpen, value: sketchBoard, onChange: setSketchBoard, onNotesChange: () => {
                     // sketch note chips are derived from board state in the shell
                 }, onClose: () => setSketchBoardOpen(false) }), currentDiff ? (_jsx("div", { style: { position: "fixed", inset: 0, background: "var(--builder-overlay)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }, children: _jsxs("div", { style: { width: "min(1100px, 96%)", height: "min(80vh, 820px)", background: "var(--bg-elevated)", border: "1px solid var(--builder-border)", borderRadius: 24, display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "var(--shadow-lg)" }, children: [_jsxs("div", { style: { padding: "10px 14px", borderBottom: "1px solid var(--builder-border)", display: "flex", alignItems: "center", justifyContent: "space-between", fontFamily: "'SF Mono','JetBrains Mono',monospace", fontSize: 10, letterSpacing: "0.08em", color: "var(--accent-strong)" }, children: [_jsx("span", { children: "REVIEW AI CHANGES" }), _jsx("span", { style: { color: "var(--builder-muted)" }, children: currentDiff.file })] }), _jsx("div", { style: { flex: 1, minHeight: 0 }, children: _jsx(DiffEditor, { height: "100%", original: currentDiff.before, modified: currentDiff.after, language: monacoLang(fileExt(currentDiff.file)), theme: tokens.diffTheme, options: {
                                     readOnly: true,
@@ -2514,7 +2590,19 @@ export default function BuilderShell() {
                                     fontSize: 12,
                                     wordWrap: "on",
                                     automaticLayout: true,
-                                } }) }), _jsxs("div", { style: { padding: "12px 14px", borderTop: "1px solid var(--builder-border)", display: "flex", justifyContent: "flex-end", gap: 8 }, children: [_jsx("button", { onClick: handleRejectDiff, style: {
+                                } }) }), currentDiff.patchSet?.verification ? (_jsx("div", { style: {
+                                padding: "10px 14px",
+                                borderTop: "1px solid var(--builder-border)",
+                                background: currentDiff.patchSet.verification.blocked ? "rgba(239,68,68,0.06)" : "rgba(0,122,255,0.05)",
+                                color: currentDiff.patchSet.verification.blocked ? "#b91c1c" : "var(--builder-muted-strong)",
+                                fontFamily: "'SF Mono','JetBrains Mono',monospace",
+                                fontSize: 10,
+                                letterSpacing: "0.04em",
+                            }, children: currentDiff.patchSet.verification.warning
+                                ? currentDiff.patchSet.verification.warning
+                                : currentDiff.patchSet.verification.blocked
+                                    ? "Verification flagged this patch for review."
+                                    : "Verification passed for this patch." })) : null, _jsxs("div", { style: { padding: "12px 14px", borderTop: "1px solid var(--builder-border)", display: "flex", justifyContent: "flex-end", gap: 8 }, children: [_jsx("button", { onClick: handleRejectDiff, style: {
                                         border: "1px solid rgba(239,68,68,0.22)",
                                         background: "rgba(239,68,68,0.08)",
                                         color: "#dc2626",

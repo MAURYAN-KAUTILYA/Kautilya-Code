@@ -1,4 +1,5 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { useEffect, useRef } from "react";
 import Editor from "@monaco-editor/react";
 import KautilyaLogo from "@/components/KautilyaLogo";
 import { useAppTheme } from "@/theme/AppThemeProvider";
@@ -64,9 +65,19 @@ function NonTextState({ fileState }) {
                         ? "Use the preview pane to inspect this asset while keeping the editor focused on editable files."
                         : fileState.message || "This file cannot be edited inline here." })] }) }));
 }
-export default function EditorSection({ activeFile, code, fileState, openTabsCount, panelMode, workspaceTab, previewTab, previewUrl, terminalPanel, consoleEntries, onCodeChange, onPreviewTabChange, onPreviewUrlApply, onUseFilePreview, onClearConsole, onPreviewConsoleEvent, }) {
+export default function EditorSection({ activeFile, code, fileState, openTabsCount, panelMode, workspaceTab, previewTab, previewUrl, terminalPanel, consoleEntries, onCodeChange, onPreviewTabChange, onPreviewUrlApply, onUseFilePreview, onClearConsole, onPreviewConsoleEvent, onSelectionChange, onDiagnosticsChange, }) {
     const { tokens } = useAppTheme();
     const monacoThemeName = `kautilya-${tokens.mode}-${tokens.accentId}`;
+    const selectionSubscriptionRef = useRef(null);
+    useEffect(() => {
+        return () => {
+            selectionSubscriptionRef.current?.dispose?.();
+        };
+    }, []);
+    useEffect(() => {
+        onSelectionChange?.(null);
+        onDiagnosticsChange?.([]);
+    }, [activeFile, onDiagnosticsChange, onSelectionChange]);
     const workspaceBody = workspaceTab === "terminal" ? (terminalPanel) : openTabsCount === 0 ? (_jsx(EmptyState, {})) : fileState.kind !== "text" ? (_jsx(NonTextState, { fileState: fileState })) : (_jsx("div", { style: { ...surface, flex: 1, minHeight: 0, overflow: "hidden" }, children: _jsx(Editor, { beforeMount: (monaco) => {
                 monaco.editor.defineTheme(monacoThemeName, {
                     base: tokens.monacoTheme,
@@ -86,7 +97,39 @@ export default function EditorSection({ activeFile, code, fileState, openTabsCou
                         "editorBracketMatch.border": withAlpha(tokens.accentStrong, tokens.mode === "dark" ? 0.38 : 0.24),
                     },
                 });
-            }, height: "100%", language: monacoLang(fileExt(activeFile)), onChange: (value) => onCodeChange(value ?? ""), options: {
+            }, height: "100%", language: monacoLang(fileExt(activeFile)), onChange: (value) => onCodeChange(value ?? ""), onMount: (editor) => {
+                const emitSelection = () => {
+                    const selection = editor.getSelection();
+                    const model = editor.getModel();
+                    if (!selection || !model || selection.isEmpty()) {
+                        onSelectionChange?.(null);
+                        return;
+                    }
+                    onSelectionChange?.({
+                        startLineNumber: selection.startLineNumber,
+                        startColumn: selection.startColumn,
+                        endLineNumber: selection.endLineNumber,
+                        endColumn: selection.endColumn,
+                        selectedText: model.getValueInRange(selection).slice(0, 4000),
+                    });
+                };
+                selectionSubscriptionRef.current?.dispose?.();
+                selectionSubscriptionRef.current = editor.onDidChangeCursorSelection(emitSelection);
+                editor.onDidBlurEditorText(() => onSelectionChange?.(null));
+                emitSelection();
+            }, onValidate: (markers) => {
+                onDiagnosticsChange?.(markers.map((marker) => ({
+                    file: activeFile,
+                    line: marker.startLineNumber,
+                    column: marker.startColumn,
+                    endLine: marker.endLineNumber,
+                    endColumn: marker.endColumn,
+                    level: marker.severity === 8 ? "error" : marker.severity === 4 ? "warning" : "info",
+                    message: String(marker.message || ""),
+                    source: marker.source ? String(marker.source) : undefined,
+                    code: marker.code ? String(typeof marker.code === "object" ? marker.code.value : marker.code) : undefined,
+                })));
+            }, options: {
                 fontSize: 13,
                 fontFamily: "'SF Mono', 'JetBrains Mono', monospace",
                 minimap: { enabled: false },

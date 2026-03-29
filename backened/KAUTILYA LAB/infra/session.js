@@ -10,6 +10,13 @@ const SESSION_DIR = path.join(DATA_DIR, 'sessions');
 const DEFAULT_CONTEXT_TOKENS = parseInt(process.env.CONTEXT_TOKEN_LIMIT || '16000', 10);
 const DEFAULT_CREDIT_LIMIT = parseInt(process.env.CREDIT_LIMIT || '100000', 10);
 const DEFAULT_WARN_PERCENT = parseFloat(process.env.CREDIT_WARN_PERCENT || '10');
+const DEFAULT_PROFILE = {
+  domainBias: 'general',
+  toneFormality: 'balanced',
+  explanationDepth: 'balanced',
+  autonomyPreference: 'balanced',
+  updatedAt: null,
+};
 
 const sessions = new Map();
 
@@ -61,6 +68,7 @@ export function getSession(sessionId) {
     persistentCommands: { ...DEFAULT_PERSISTENT_COMMANDS },
     lastAssistantArtifact: '',
     sketchBoard: null,
+    profile: { ...DEFAULT_PROFILE },
     updatedAt: new Date().toISOString(),
   };
 
@@ -70,6 +78,10 @@ export function getSession(sessionId) {
   };
   session.lastAssistantArtifact = String(session.lastAssistantArtifact || '');
   session.sketchBoard = session.sketchBoard ?? null;
+  session.profile = {
+    ...DEFAULT_PROFILE,
+    ...(session.profile || {}),
+  };
 
   sessions.set(sessionId, session);
   return session;
@@ -216,4 +228,25 @@ export function setSessionSketch(sessionId, sketchBoard) {
   session.sketchBoard = sketchBoard ?? null;
   persistSession(sessionId);
   return session.sketchBoard;
+}
+
+export function getSessionProfile(sessionId) {
+  const session = getSession(sessionId);
+  return {
+    ...DEFAULT_PROFILE,
+    ...(session?.profile || {}),
+  };
+}
+
+export function setSessionProfile(sessionId, profile) {
+  const session = getSession(sessionId);
+  if (!session) return null;
+  session.profile = {
+    ...DEFAULT_PROFILE,
+    ...(session.profile || {}),
+    ...(profile || {}),
+    updatedAt: new Date().toISOString(),
+  };
+  persistSession(sessionId);
+  return session.profile;
 }

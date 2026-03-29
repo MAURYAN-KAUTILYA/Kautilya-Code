@@ -40,6 +40,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const execAsync = promisify(exec);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(__dirname, '../..');
+const OPENROUTER_REFERER = process.env.OPENROUTER_REFERER || `http://localhost:${Number(process.env.CODE_SERVER_PORT || process.env.PORT) || 3002}`;
 
 // ─── CONFIG ────────────────────────────────────────────────────────────────────
 const CFG = {
@@ -137,7 +138,7 @@ async function call(variant, role, messages, system, retries = CFG.RETRY_MAX) {
         headers: {
           'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
           'Content-Type': 'application/json',
-          'HTTP-Referer': 'http://localhost:3002',
+          'HTTP-Referer': OPENROUTER_REFERER,
           'X-Title': 'Kautilya-Code',
         },
         body: JSON.stringify({

@@ -87,8 +87,35 @@ I am actively looking for people who want to help shape the project.
 - `npm run lint` - run lint checks
 - `npm run preview` - preview the built app locally
 
-## Why This Repo Feels Different
+## Preview
 
-Kautilya keeps the request, the source, the runtime, and the review loop visible together. It is built for teammates who want to make something polished, useful, and hard to ignore.
+Below is a simple app preview gallery using the image URLs you provided. If you'd rather store screenshots in the repo, place them under `assets/preview/` and replace the image URLs with local paths.
+
+The gallery is formatted as a 2x2 grid; adjust widths if you prefer different sizing.
+
+<div align="center">
+<table>
+  <tr>
+    <td align="center">
+      <img src="https://i.postimg.cc/qvFHGfG3/kautilya-code.png" alt="Kautilya preview 1" width="360" />
+      <p><em>Preview 1 — dashboard </em></p>
+    </td>
+    <td align="center">
+      <img src="https://i.postimg.cc/Y0PzsxDb/kautilya-code-2.png" alt="Kautilya preview 2" width="360" />
+      <p><em>Preview 2 —builder workspace</em></p>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="https://i.postimg.cc/R0CGqqfx/kautilya-code-3.png" alt="Kautilya preview 3" width="360" />
+      <p><em>Preview 3 — '/' comands </em></p>
+    </td>
+    <td align="center">
+      <img src="https://i.postimg.cc/nLLYpg8w/kautilya-code-4.png" alt="Kautilya preview 4" width="360" />
+      <p><em>Preview 4 — models/tier </em></p>
+    </td>
+  </tr>
+</table>
+</div>
 
 > The world is a battlefield; your code is your infantry. Lead them well.

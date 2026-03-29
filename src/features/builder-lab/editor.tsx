@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import Editor from "@monaco-editor/react";
 import KautilyaLogo from "@/components/KautilyaLogo";
 import { useAppTheme } from "@/theme/AppThemeProvider";
@@ -18,6 +18,26 @@ interface ConsoleLine {
   timestamp: number;
 }
 
+interface WorkspaceSelection {
+  startLineNumber: number;
+  startColumn: number;
+  endLineNumber: number;
+  endColumn: number;
+  selectedText?: string;
+}
+
+interface WorkspaceDiagnostic {
+  file: string;
+  line: number;
+  column: number;
+  endLine?: number;
+  endColumn?: number;
+  level: string;
+  message: string;
+  source?: string;
+  code?: string;
+}
+
 interface EditorSectionProps {
   activeFile: string;
   code: string;
@@ -35,6 +55,8 @@ interface EditorSectionProps {
   onUseFilePreview: () => void;
   onClearConsole: () => void;
   onPreviewConsoleEvent: (entry: Omit<ConsoleLine, "id" | "timestamp">) => void;
+  onSelectionChange?: (selection: WorkspaceSelection | null) => void;
+  onDiagnosticsChange?: (diagnostics: WorkspaceDiagnostic[]) => void;
 }
 
 const surface = {
@@ -158,9 +180,23 @@ export default function EditorSection({
   onUseFilePreview,
   onClearConsole,
   onPreviewConsoleEvent,
+  onSelectionChange,
+  onDiagnosticsChange,
 }: EditorSectionProps) {
   const { tokens } = useAppTheme();
   const monacoThemeName = `kautilya-${tokens.mode}-${tokens.accentId}`;
+  const selectionSubscriptionRef = useRef<any>(null);
+
+  useEffect(() => {
+    return () => {
+      selectionSubscriptionRef.current?.dispose?.();
+    };
+  }, []);
+
+  useEffect(() => {
+    onSelectionChange?.(null);
+    onDiagnosticsChange?.([]);
+  }, [activeFile, onDiagnosticsChange, onSelectionChange]);
 
   const workspaceBody =
     workspaceTab === "terminal" ? (
@@ -195,6 +231,43 @@ export default function EditorSection({
           height="100%"
           language={monacoLang(fileExt(activeFile))}
           onChange={(value) => onCodeChange(value ?? "")}
+          onMount={(editor) => {
+            const emitSelection = () => {
+              const selection = editor.getSelection();
+              const model = editor.getModel();
+              if (!selection || !model || selection.isEmpty()) {
+                onSelectionChange?.(null);
+                return;
+              }
+              onSelectionChange?.({
+                startLineNumber: selection.startLineNumber,
+                startColumn: selection.startColumn,
+                endLineNumber: selection.endLineNumber,
+                endColumn: selection.endColumn,
+                selectedText: model.getValueInRange(selection).slice(0, 4000),
+              });
+            };
+
+            selectionSubscriptionRef.current?.dispose?.();
+            selectionSubscriptionRef.current = editor.onDidChangeCursorSelection(emitSelection);
+            editor.onDidBlurEditorText(() => onSelectionChange?.(null));
+            emitSelection();
+          }}
+          onValidate={(markers) => {
+            onDiagnosticsChange?.(
+              markers.map((marker: any) => ({
+                file: activeFile,
+                line: marker.startLineNumber,
+                column: marker.startColumn,
+                endLine: marker.endLineNumber,
+                endColumn: marker.endColumn,
+                level: marker.severity === 8 ? "error" : marker.severity === 4 ? "warning" : "info",
+                message: String(marker.message || ""),
+                source: marker.source ? String(marker.source) : undefined,
+                code: marker.code ? String(typeof marker.code === "object" ? marker.code.value : marker.code) : undefined,
+              })),
+            );
+          }}
           options={{
             fontSize: 13,
             fontFamily: "'SF Mono', 'JetBrains Mono', monospace",

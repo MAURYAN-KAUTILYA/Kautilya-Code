@@ -14,6 +14,7 @@ import MacOSDock, { type DockApp } from "@/components/ui/mac-os-dock";
 import { useAppTheme } from "@/theme/AppThemeProvider";
 import AIPanel from "./Aipanel";
 import EditorSection from "./editor";
+import RuntimeTerminal from "./RuntimeTerminal";
 import SketchBoard, { type SketchBoardValue, type SketchSticky } from "./SketchBoard";
 import {
   COMMAND_REGISTRY,
@@ -139,6 +140,80 @@ interface PendingDiff {
   file: string;
   before: string;
   after: string;
+  patchSet?: PatchSet;
+}
+
+interface WorkspaceSelection {
+  startLineNumber: number;
+  startColumn: number;
+  endLineNumber: number;
+  endColumn: number;
+  selectedText?: string;
+}
+
+interface WorkspaceDiagnostic {
+  file: string;
+  line: number;
+  column: number;
+  endLine?: number;
+  endColumn?: number;
+  level: string;
+  message: string;
+  source?: string;
+  code?: string;
+}
+
+interface PatchVerification {
+  provider?: string;
+  blocked?: boolean;
+  warning?: string;
+  changedDependencies?: Array<{
+    name: string;
+    beforeVersion?: string | null;
+    afterVersion?: string | null;
+    section?: string;
+  }>;
+  findings?: Array<{
+    package: string;
+    blocked?: boolean;
+    score?: number | null;
+    cveCount?: number;
+    error?: string;
+  }>;
+}
+
+interface PatchFileChange {
+  path: string;
+  kind: "replace";
+  before: string;
+  after: string;
+  stats?: {
+    added?: number;
+    removed?: number;
+    changed?: number;
+  };
+}
+
+interface PatchSet {
+  patchId: string;
+  createdAt: string;
+  approvalPolicy: string;
+  status: string;
+  verification?: PatchVerification | null;
+  files: PatchFileChange[];
+}
+
+interface VerificationCheck {
+  name: string;
+  status: string;
+  output?: string;
+  error?: string;
+}
+
+interface VerificationReport {
+  overall?: string;
+  diagnostics?: WorkspaceDiagnostic[];
+  checks?: VerificationCheck[];
 }
 
 interface CreditStatus {
@@ -330,7 +405,7 @@ function readStoredRuntimeMode() {
   return stored === "sandbox" || stored === "local" ? stored : "auto";
 }
 
-function Terminal({
+export function LegacyTerminal({
   activeFile,
   sessionId,
   onConsoleEntry,
@@ -1547,6 +1622,8 @@ export default function BuilderShell() {
   const [applyMode, setApplyMode] = useState<"preview" | "write">("preview");
   const [apiKeyInfo, setApiKeyInfo] = useState<ApiKeyInfo | null>(null);
   const [pendingDiffs, setPendingDiffs] = useState<PendingDiff[]>([]);
+  const [editorSelection, setEditorSelection] = useState<WorkspaceSelection | null>(null);
+  const [editorDiagnostics, setEditorDiagnostics] = useState<WorkspaceDiagnostic[]>([]);
   const [selectedExplorerPath, setSelectedExplorerPath] = useState(DEFAULT_WORKSPACE_FILE);
   const [openFolders, setOpenFolders] = useState<Set<string>>(new Set());
   const [explorerDraft, setExplorerDraft] = useState<ExplorerDraft | null>(null);
@@ -1920,6 +1997,24 @@ export default function BuilderShell() {
   }, [previewUrl]);
 
 
+  const buildWorkspaceToolContext = () => {
+    const openFiles = openTabs
+      .map((tab) => {
+        const content = tab === activeFile ? code : fileSnapshots[tab];
+        if (typeof content !== "string") return null;
+        return { path: tab, content };
+      })
+      .filter((entry): entry is { path: string; content: string } => Boolean(entry));
+
+    return {
+      activeFile,
+      openTabs,
+      openFiles,
+      selection: editorSelection,
+      diagnostics: editorDiagnostics,
+    };
+  };
+
   const writeWorkspaceFile = async (targetPath: string, content: string) => {
     if (workspaceSource === "local") {
       const entry = localFilesRef.current[targetPath];
@@ -1936,11 +2031,15 @@ export default function BuilderShell() {
       return;
     }
 
-    await fetch("/api/fs/file", {
+    const response = await fetch("/api/fs/file", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ path: targetPath, content }),
     });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload.error || `Failed to save ${targetPath}`);
+    }
   };
 
   const handleSave = async () => {
@@ -2059,8 +2158,37 @@ export default function BuilderShell() {
 
   const handleAcceptDiff = async () => {
     if (!currentDiff) return;
+    let shouldAdvanceQueue = true;
     try {
-      await writeWorkspaceFile(currentDiff.file, currentDiff.after);
+      if (workspaceSource === "project" && currentDiff.patchSet?.patchId) {
+        const response = await fetch("/api/patches/apply", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            patchId: currentDiff.patchSet.patchId,
+            force: false,
+            context: buildWorkspaceToolContext(),
+          }),
+        });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          if (response.status === 409) {
+            shouldAdvanceQueue = false;
+            const verificationReport = (payload.verificationReport || {}) as VerificationReport;
+            const failedChecks = Array.isArray(verificationReport.checks)
+              ? verificationReport.checks.filter((check) => check.status === "failed").map((check) => check.name)
+              : [];
+            const reason = failedChecks.length > 0
+              ? `verification failed (${failedChecks.join(", ")})`
+              : payload.reason || "verification blocked the patch";
+            addSystemMessage(`Patch blocked for ${currentDiff.file}: ${reason}`, "error");
+            return;
+          }
+          throw new Error(payload.error || `Failed to apply patch for ${currentDiff.file}`);
+        }
+      } else {
+        await writeWorkspaceFile(currentDiff.file, currentDiff.after);
+      }
       snapshotFile(currentDiff.file, currentDiff.after);
       if (activeFile === currentDiff.file) setCode(currentDiff.after);
       if (!openTabs.includes(currentDiff.file)) setOpenTabs((prev) => [...prev, currentDiff.file]);
@@ -2070,7 +2198,9 @@ export default function BuilderShell() {
     } catch (err: any) {
       addSystemMessage(`Failed to apply ${currentDiff.file}: ${err?.message || "unknown error"}`, "error");
     } finally {
-      setPendingDiffs((prev) => prev.slice(1));
+      if (shouldAdvanceQueue) {
+        setPendingDiffs((prev) => prev.slice(1));
+      }
     }
   };
 
@@ -2099,6 +2229,7 @@ export default function BuilderShell() {
         cwd: deriveWorkingDirectory(activeFile),
         runtimeMode: readStoredRuntimeMode(),
         sessionId,
+        workspaceContext: buildWorkspaceToolContext(),
       }),
     });
     const data = await res.json();
@@ -2342,8 +2473,25 @@ export default function BuilderShell() {
       addSystemMessage(`Working on ${data.file}`, "running");
       return;
     }
+    if (data.type === "patch_preview" && data.file && data.patchSet) {
+      const patchSet = data.patchSet as PatchSet;
+      const patchFile = patchSet.files?.[0];
+      const before = patchFile?.before ?? fileSnapshots[data.file] ?? "";
+      const after = patchFile?.after ?? "";
+      if (after && before !== after) {
+        setPendingDiffs((prev) => [...prev, { file: data.file, before, after, patchSet }]);
+      }
+      if (patchSet.verification?.warning) {
+        addSystemMessage(`Review warning for ${data.file}: ${patchSet.verification.warning}`, "running");
+      }
+      if (patchSet.verification?.blocked) {
+        addSystemMessage(`Dependency risk flagged for ${data.file}. Review carefully before applying.`, "error");
+      }
+      return;
+    }
     if (data.type === "file_done" && data.file) {
       setFileState(data.file, "done");
+      if (data.patchSet) return;
       const before = data.before ?? fileSnapshots[data.file] ?? "";
       const after = data.after ?? "";
       if (after && before !== after) {
@@ -2526,6 +2674,7 @@ export default function BuilderShell() {
         temporaryCommands,
         commandDirectives: requestDirectives,
         sketchContext,
+        workspaceContext: buildWorkspaceToolContext(),
       }),
     });
     await consumeSseResponse(res, assistantId);
@@ -3489,7 +3638,14 @@ export default function BuilderShell() {
               workspaceTab={workspaceTab}
               previewTab={previewTab}
               previewUrl={previewUrl}
-              terminalPanel={<Terminal activeFile={activeFile} sessionId={sessionId} onConsoleEntry={appendConsoleEntry} />}
+              terminalPanel={
+                <RuntimeTerminal
+                  activeFile={activeFile}
+                  sessionId={sessionId}
+                  workspaceContext={buildWorkspaceToolContext()}
+                  onConsoleEntry={appendConsoleEntry}
+                />
+              }
               consoleEntries={consoleEntries}
               onCodeChange={setCode}
               onPreviewTabChange={setPreviewTab}
@@ -3497,6 +3653,8 @@ export default function BuilderShell() {
               onUseFilePreview={handleUseFilePreview}
               onClearConsole={handleClearConsole}
               onPreviewConsoleEvent={appendConsoleEntry}
+              onSelectionChange={setEditorSelection}
+              onDiagnosticsChange={setEditorDiagnostics}
             />
             <input ref={filePickerRef} type="file" onChange={handlePickedFileChange} style={{ display: "none" }} />
             <input ref={folderPickerRef} type="file" multiple onChange={handlePickedFolderChange} style={{ display: "none" }} />
@@ -3545,6 +3703,25 @@ export default function BuilderShell() {
                 }}
               />
             </div>
+            {currentDiff.patchSet?.verification ? (
+              <div
+                style={{
+                  padding: "10px 14px",
+                  borderTop: "1px solid var(--builder-border)",
+                  background: currentDiff.patchSet.verification.blocked ? "rgba(239,68,68,0.06)" : "rgba(0,122,255,0.05)",
+                  color: currentDiff.patchSet.verification.blocked ? "#b91c1c" : "var(--builder-muted-strong)",
+                  fontFamily: "'SF Mono','JetBrains Mono',monospace",
+                  fontSize: 10,
+                  letterSpacing: "0.04em",
+                }}
+              >
+                {currentDiff.patchSet.verification.warning
+                  ? currentDiff.patchSet.verification.warning
+                  : currentDiff.patchSet.verification.blocked
+                    ? "Verification flagged this patch for review."
+                    : "Verification passed for this patch."}
+              </div>
+            ) : null}
             <div style={{ padding: "12px 14px", borderTop: "1px solid var(--builder-border)", display: "flex", justifyContent: "flex-end", gap: 8 }}>
               <button
                 onClick={handleRejectDiff}
