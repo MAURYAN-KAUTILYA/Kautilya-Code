@@ -67,6 +67,7 @@ I am actively looking for people who want to help shape the project.
 - You communicate clearly
 - You follow through on tasks
 - You like product thinking, not just code
+- if you are good in thinking skills for model then you are in
 
 ## Project Map
 
