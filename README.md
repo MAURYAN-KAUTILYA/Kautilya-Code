@@ -92,7 +92,7 @@ I am actively looking for people who want to help shape the project.
 
 Below is a simple app preview gallery using the image URLs you provided. If you'd rather store screenshots in the repo, place them under `assets/preview/` and replace the image URLs with local paths.
 
-The gallery is formatted as a 2x2 grid; adjust widths if you prefer different sizing.
+
 
 <div align="center">
 <table>
